@@ -54,6 +54,7 @@ class YoutubeApi(Mongodb):
             comment = item["snippet"]["topLevelComment"]
             detail = {
                 'commentId': comment["id"],
+                'videoId': item["snippet"]['videoId'],
                 'author': comment["snippet"]["authorDisplayName"],
                 'text': comment["snippet"]["textDisplay"],
                 'likeCount': comment["snippet"]["likeCount"],
