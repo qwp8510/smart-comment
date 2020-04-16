@@ -29,22 +29,6 @@ def _parse_args():
                         help='Show results only, do not plubic')
     return parser.parse_args()
 
-class ChannelApi(OwnerApi):
-    def __init__(self):
-        super(ChannelApi, self).__init__(
-            host=Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], path='Youtube_channels'
-        )
-    
-    def get(self):
-        data = super(ChannelApi, self).get()
-        return data
-
-
-def get_channelDetail():
-    data = ChannelApi().get()
-    logger.info('data: {}'.format(data))
-    return data
-
 class AbstractFeatures():
     featuresLabel_dir = join(CURRENT_PATH, 'featuresLabel', FEATURESLABEL)
     frontKeys = []
@@ -127,7 +111,6 @@ def main():
             logger.info('succedd pushing video Id: {} to mongodb'.format(videoId))
         
             logger.info('---got youtube url--- {}'.format(args.youtube_url))
-    # channelDetail = get_channelDetail()
 
 if __name__ == '__main__':
     logging.basicConfig(
