@@ -1,4 +1,4 @@
-*.__pycache_/
-*.lp_config.json
-*.md_config.json
+*.pyc
+*lp_config.json
+*md_config.json
 
