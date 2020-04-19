@@ -8,16 +8,13 @@ from urllib.request import  urlopen
 from md import Mongodb
 
 logger = logging.getLogger(__name__)
-KEY = 'AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o'
-videourl = 'https://www.youtube.com/watch?v=Azr2SA2Ers4'
+# KEY = 'AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o'
+# videourl = 'https://www.youtube.com/watch?v=Azr2SA2Ers4'
 
 class YoutubeApi(Mongodb):
     YOUTUBE_COMMENT_URL = 'https://www.googleapis.com/youtube/v3/commentThreads'
     YOUTUBE_SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search'
     YOUTUBE_VIDEO_URL = 'https://www.youtube.com/watch?v='
-    commentDetail = defaultdict(list)
-    channelVidDetail = defaultdict(list)
-
 
     def __init__(self, apiKey, clusterName, dbName, collectionName):
         self.apiKey = apiKey
@@ -26,11 +23,14 @@ class YoutubeApi(Mongodb):
         )
 
     def get_urlData(self, url, param):
-        with urlopen(url + '?' + urlencode(param)) as f:
-            data = f.read()
-            f.close()
-        content = data.decode("utf-8")
-        return json.loads(content)
+        try:
+            with urlopen(url + '?' + urlencode(param)) as f:
+                data = f.read()
+                f.close()
+            content = data.decode("utf-8")
+            return json.loads(content)
+        except Exception as e:
+            logger.error('Youtube.Api.get_urlData fail {}'.format(e))            
 
     def parse_videoId(self, url):
         try:
@@ -80,6 +80,7 @@ class YoutubeApi(Mongodb):
             logger.error("Cannot Open URL or Fetch comments at a moment")
 
     def gen_comment(self, url, maxResult=1):
+        self.commentDetail = defaultdict(list)
         videoId = self.parse_videoId(url)
         params = {
             'part': "snippet,replies",
@@ -122,7 +123,8 @@ class YoutubeApi(Mongodb):
         except:
             logger.error("Cannot Open URL or Fetch comments at a moment")
 
-    def gen_channelVideo(self, channelId, maxResult):
+    def gen_channelVideo(self, channelId, maxResult=1):
+        self.channelVidDetail = defaultdict(list)
         params = {
             'part': 'id,snippet',
             'channelId': channelId,
@@ -133,6 +135,7 @@ class YoutubeApi(Mongodb):
         self.load_channelVideo(content)
         self.gen_videoByPage(params, content)
         logger.info(self.channelVidDetail)
+        return self.channelVidDetail
 
 class MongoYoutube(YoutubeApi):
     def __init__(self, key, cluster, db, collection):
@@ -143,20 +146,3 @@ class MongoYoutube(YoutubeApi):
     def push_comment(self, comment, dry_run=False):
         if not dry_run:
             self._insert_many(comment)
-
-
-def main():
-    youtubeApi = MongoYoutube(
-        key=KEY,
-        cluster='raw-comment-chinese',
-        db='comment-chinese',
-        collection='raw-comment'
-    )
-    youtubeApi.gen_channelVideo('UC6FcYHEm7SO1jpu5TKjNXEA', 10)
-
-if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)-15s:%(levelname)s:%(name)s:%(message)s',
-    )
-    main()

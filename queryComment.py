@@ -17,10 +17,6 @@ FEATURESLABEL = 'feature.json'
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--host', default='localhost',
-                        help='Elasticsearch host (default: "localhost").')
-    parser.add_argument('--port', type=int, default=9200,
-                        help='Elasticsearch port (default: 9200).')
     parser.add_argument('--youtube-url',
                         help='open weather map api key')
     parser.add_argument('--youtube-api-key', default='AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o',

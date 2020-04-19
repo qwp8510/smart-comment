@@ -6,6 +6,8 @@ import json
 import time
 from requests.exceptions import HTTPError
 from config import Config
+from urllib.parse import urlparse, urlencode, parse_qs
+from urllib.request import  urlopen
 
 DEFAULT_TIMEOUT = (15, 15)
 logger = logging.getLogger(__name__)
