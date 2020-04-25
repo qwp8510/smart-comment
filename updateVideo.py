@@ -3,8 +3,10 @@ import argparse
 import json
 from os.path import join, abspath, dirname
 from api import OwnerApi
-from youtubeApi import MongoYoutube
+
 from config import Config
+from youtube.channelApi import ChannelApi
+from youtube.youtubeApi import MongoYoutube
 
 # mainKey = 'AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o'
 # backKEY = 'AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg'
@@ -14,39 +16,27 @@ CURRENT_PATH = dirname(abspath(__file__))
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--youtube-api-key', default='AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg',
+    parser.add_argument('--youtube-api-key', default='AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o',
                         help='youtube api key')
     parser.add_argument('--dry-run', action='store_true',
                         help='Show results only, do not plubic')
     return parser.parse_args()
 
-class ChannelApi(OwnerApi):
-    def __init__(self, path):
-        super(ChannelApi, self).__init__(
-            host=Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], path=path
-        )
-    
-    def get(self, params=None):
-        data = super(ChannelApi, self).get(params={"filter": json.dumps(params)})
-        return data
-
-    def push(self, data):
-        super(ChannelApi, self).post(json=data)
-
 def get_channelDetail():
-    data = ChannelApi('Youtube_channels').get()
+    data = ChannelApi(Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], 'Youtube_channels').get()
     logger.info('data: {}'.format(data))
     return data
 
 def push_channelVideo(videoData):
     try:
-        ChannelApi('Youtube_videos').push(data=videoData)
+        ChannelApi(Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], 'Youtube_videos').push(data=videoData)
     except Exception as e:
         logger.warning('warning occure push_channelVideo: {}'.format(e))
 
 def get_videoId():
-    videoId = ChannelApi('Youtube_videos').get(params={"fields": {"videoId": True}})
-    ids = [id['videoId'] for id in videoId]
+    channelApi = ChannelApi(Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], 'Youtube_videos')
+    videoIds = channelApi.get(params={"fields": {"videoId": True}})
+    ids = [videoId['videoId'] for videoId in videoIds]
     logger.info('loading video id from db')
     return ids
 

@@ -4,26 +4,47 @@ import pandas as pd
 import json
 from time import gmtime, strftime
 from os.path import join, abspath, dirname
-from api import OwnerApi
-from youtubeApi import MongoYoutube
-from config import Config
+from requests.exceptions import HTTPError
 
-# KEY = 'AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o'
-# videourl = 'https://www.youtube.com/watch?v=Azr2SA2Ers4'
+from api import OwnerApi
+from config import Config
+from youtube.channelApi import ChannelApi
+from youtube.youtubeApi import MongoYoutube
+
 logger = logging.getLogger(__name__)
 CURRENT_PATH = dirname(abspath(__file__))
 TRAIN_DIR = join(CURRENT_PATH, 'data', 'unlabel')
 FEATURESLABEL = 'feature.json'
+APIKEY = [
+    # 'AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg',
+    'AIzaSyCGokxpLFG-7M259tOp7-q7fsqYKqvmQNE',
+    'AIzaSyD08pO1kEyZ1t7RXQuAyUFlOTyJO68FZYg',
+    'AIzaSyBOWzgpes4ryDn0BHthJjj7vcGr1VlpndA',
+    'AIzaSyBaFMdTVrz6pJhSosmWNMaailKVWElkjIw'
+]
+COUNT = 0
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--youtube-url',
-                        help='open weather map api key')
+    parser.add_argument('--videoId', default=None,
+                        help='youtube video unique id')
     parser.add_argument('--youtube-api-key', default='AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o',
-                        help='open weather map api key')
+                        help='youtube api key')
     parser.add_argument('--dry-run', action='store_true',
                         help='Show results only, do not plubic')
+    parser.add_argument('--save', action='store_true',
+                        help='save to csv')
     return parser.parse_args()
+
+class VideoApi(OwnerApi):
+    def __init__(self, path):
+        super(VideoApi, self).__init__(
+            host=Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], path=path
+        )
+    
+    def get(self, params=None):
+        data = super(VideoApi, self).get(params={"filter": json.dumps(params)})
+        return data
 
 class AbstractFeatures():
     featuresLabel_dir = join(CURRENT_PATH, 'featuresLabel', FEATURESLABEL)
@@ -89,24 +110,61 @@ def gen_filePath(fileDir):
     filePath = join(fileDir, fileName)
     return filePath
 
-def main():
-    args = _parse_args()
-    youtubeApi = MongoYoutube(
-        key=args.youtube_api_key,
+def get_videoId():
+    channelApi = ChannelApi(Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], 'Youtube_videos')
+    for videoId in channelApi.get(params={"fields": {"videoId": True}})[1299:]:
+        yield videoId['videoId']
+
+class HandleYoutubeApi(MongoYoutube):
+    def __init__(
+        self,
+        key,
         cluster='raw-comment-chinese',
         db='comment-chinese',
         collection='raw-comment'
-    )
+    ):
+        self.key = key
+        self.cluster = cluster
+        self.dbName = db
+        self.collection = collection
+        super(HandleYoutubeApi, self).__init__(
+            key=key, cluster=cluster, db=db, collection=collection
+        )
 
-    commentDetail = youtubeApi.gen_comment(args.youtube_url, 1)
-    if args.youtube_url:
-        AbstractFeatures().save(TRAIN_DIR, commentDetail)
-    for videoId, comment in commentDetail.items():
-        if not args.dry_run:
-            youtubeApi.push_comment(comment, args.dry_run)
-            logger.info('succedd pushing video Id: {} to mongodb'.format(videoId))
-        
-            logger.info('---got youtube url--- {}'.format(args.youtube_url))
+    def get_commentDetail(self, videoId):
+        global COUNT
+        if videoId:
+            yield self.gen_comment(videoId, 50)
+        else:
+            for videoId in get_videoId():
+                try:
+                    yield self.gen_comment(videoId, 50)
+                except Exception as e:
+                    logger.warning('fail with exception in get_commentDetail: {}'.format(e))
+                    super(HandleYoutubeApi, self).__init__(
+                        key=APIKEY[COUNT], cluster=self.cluster, db=self.dbName, collection=self.collection
+                    )
+                    print(APIKEY[COUNT])
+                    COUNT += 1
+                    yield self.gen_comment(videoId, 50)
+    
+    def push_commentDetail(self, commentDetail):
+        for videoId, detail in commentDetail.items():
+            self.push_comment(detail)
+            logger.info('pushing key: {} video comment detail to mongodb: {} '.format(videoId, detail))
+
+    def push(self, commentDetails):
+        for commentDetail in commentDetails:
+            self.push_commentDetail(commentDetail)
+
+def main():
+    args = _parse_args()
+    handleYoutubeApi = HandleYoutubeApi(args.youtube_api_key, collection='raw-comment-2020.04.21')
+    commentDetails = handleYoutubeApi.get_commentDetail(args.videoId)
+    if args.save:
+        AbstractFeatures().save(TRAIN_DIR, commentDetails)
+    if not args.dry_run:
+        handleYoutubeApi.push(commentDetails)
 
 if __name__ == '__main__':
     logging.basicConfig(
