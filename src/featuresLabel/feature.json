@@ -1,0 +1,15 @@
+{
+    "videoId": "videoId",
+    "commentId": "commentId",
+    "author": "author",
+    "text": "text",
+    "likeCount": "likeCount",
+    "replyCount": "replyCount",
+    "supportive": "supportive",
+    "toxic": "toxic",
+    "level": "level",
+    "obscene": "obscene",
+    "insult": "insult",
+    "threat": "threat",
+    "personal": "personal"
+}
