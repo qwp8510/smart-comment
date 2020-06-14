@@ -5,7 +5,7 @@ import requests
 import json
 import time
 from requests.exceptions import HTTPError
-from .config import Config
+from config import Config
 from urllib.parse import urlparse, urlencode, parse_qs
 from urllib.request import  urlopen
 

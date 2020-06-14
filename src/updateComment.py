@@ -7,13 +7,13 @@ from os.path import join, abspath, dirname
 from requests.exceptions import HTTPError
 
 from api import OwnerApi
-from .config import Config
-from .youtube.channelApi import ChannelApi
-from .youtube.youtubeApi import MongoYoutube
+from config import Config
+from youtube.channelApi import ChannelApi
+from youtube.youtubeApi import MongoYoutube
 
 logger = logging.getLogger(__name__)
 CURRENT_PATH = dirname(abspath(__file__))
-TRAIN_DIR = join(CURRENT_PATH, 'data', 'unlabel')
+TRAIN_DIR = join(CURRENT_PATH, 'eyesComment/data/unlabel')
 FEATURESLABEL = 'feature.json'
 APIKEY = [
     # 'AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg',
@@ -26,7 +26,7 @@ COUNT = 0
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--videoId', default=None,
+    parser.add_argument('--video-id', default=None,
                         help='youtube video unique id')
     parser.add_argument('--youtube-api-key', default='AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o',
                         help='youtube api key')
@@ -91,12 +91,13 @@ class AbstractFeatures():
         df = pd.DataFrame()
         featuresDict = self.featuresDict
         featuresColumn = self.get_column(featuresDict)
-        for serDict in series.values():
-            for ser in serDict:
-                # logging.info('saving {} policy_name dataframe to csv'.format(ser['videoId']))
-                transSer = self.trans_seriesFeatures(ser, featuresDict)
-                newDf = pd.DataFrame(transSer, columns = featuresColumn, index=[0])
-                df = pd.concat([df, newDf], ignore_index=True)
+        for data in series:
+            for data_values in data.values():
+                for value in data_values:
+                    # logging.info('saving {} policy_name dataframe to csv'.format(ser['video_id']))
+                    transSer = self.trans_seriesFeatures(value, featuresDict)
+                    newDf = pd.DataFrame(transSer, columns = featuresColumn, index=[0])
+                    df = pd.concat([df, newDf], ignore_index=True)
         return df
 
     def save(self, fileDIR, series):
@@ -110,10 +111,10 @@ def gen_filePath(fileDir):
     filePath = join(fileDir, fileName)
     return filePath
 
-def get_videoId():
+def get_video_id():
     channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
-    for videoId in channelApi.get(params={"fields": {"videoId": True}})[1299:]:
-        yield videoId['videoId']
+    for video_id in channelApi.get(params={"fields": {"video_id": True}})[1299:]:
+        yield video_id['video_id']
 
 class HandleYoutubeApi(MongoYoutube):
     def __init__(
@@ -131,14 +132,14 @@ class HandleYoutubeApi(MongoYoutube):
             key=key, cluster=cluster, db=db, collection=collection
         )
 
-    def get_commentDetail(self, videoId):
+    def get_commentDetail(self, video_id):
         global COUNT
-        if videoId:
-            yield self.gen_comment(videoId, 50)
+        if video_id:
+            yield self.gen_comment(video_id, 50)
         else:
-            for videoId in get_videoId():
+            for video_id in get_video_id():
                 try:
-                    yield self.gen_comment(videoId, 50)
+                    yield self.gen_comment(video_id, 50)
                 except Exception as e:
                     logger.warning('fail with exception in get_commentDetail: {}'.format(e))
                     super(HandleYoutubeApi, self).__init__(
@@ -146,12 +147,12 @@ class HandleYoutubeApi(MongoYoutube):
                     )
                     print(APIKEY[COUNT])
                     COUNT += 1
-                    yield self.gen_comment(videoId, 50)
+                    yield self.gen_comment(video_id, 50)
     
     def push_commentDetail(self, commentDetail):
-        for videoId, detail in commentDetail.items():
+        for video_id, detail in commentDetail.items():
             self.push_comment(detail)
-            logger.info('pushing key: {} video comment detail to mongodb: {} '.format(videoId, detail))
+            logger.info('pushing key: {} video comment detail to mongodb: {} '.format(video_id, detail))
 
     def push(self, commentDetails):
         for commentDetail in commentDetails:
@@ -160,7 +161,7 @@ class HandleYoutubeApi(MongoYoutube):
 def main():
     args = _parse_args()
     handleYoutubeApi = HandleYoutubeApi(args.youtube_api_key, collection='raw-comment-2020.04.21')
-    commentDetails = handleYoutubeApi.get_commentDetail(args.videoId)
+    commentDetails = handleYoutubeApi.get_commentDetail(args.video_id)
     if args.save:
         AbstractFeatures().save(TRAIN_DIR, commentDetails)
     if not args.dry_run:
