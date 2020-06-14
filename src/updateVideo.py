@@ -2,19 +2,11 @@ import logging
 import argparse
 import json
 from os.path import join, abspath, dirname
-<<<<<<< HEAD:updateVideo.py
-from api import OwnerApi
-
-from config import Config
-from youtube.channelApi import ChannelApi
-from youtube.youtubeApi import MongoYoutube
-=======
 from .api import OwnerApi
 
 from .config import Config
 from .youtube.channelApi import ChannelApi
 from .youtube.youtubeApi import MongoYoutube
->>>>>>> feature/building-bert_model:src/updateVideo.py
 
 # mainKey = 'AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o'
 # backKEY = 'AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg'
@@ -31,30 +23,18 @@ def _parse_args():
     return parser.parse_args()
 
 def get_channelDetail():
-<<<<<<< HEAD:updateVideo.py
-    data = ChannelApi(Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], 'Youtube_channels').get()
-=======
     data = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_channels').get()
->>>>>>> feature/building-bert_model:src/updateVideo.py
     logger.info('data: {}'.format(data))
     return data
 
 def push_channelVideo(videoData):
     try:
-<<<<<<< HEAD:updateVideo.py
-        ChannelApi(Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], 'Youtube_videos').push(data=videoData)
-=======
         ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos').push(data=videoData)
->>>>>>> feature/building-bert_model:src/updateVideo.py
     except Exception as e:
         logger.warning('warning occure push_channelVideo: {}'.format(e))
 
 def get_videoId():
-<<<<<<< HEAD:updateVideo.py
-    channelApi = ChannelApi(Config(CURRENT_PATH, 'lp_config.json').content['PORTAL_SERVER'], 'Youtube_videos')
-=======
     channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
->>>>>>> feature/building-bert_model:src/updateVideo.py
     videoIds = channelApi.get(params={"fields": {"videoId": True}})
     ids = [videoId['videoId'] for videoId in videoIds]
     logger.info('loading video id from db')
