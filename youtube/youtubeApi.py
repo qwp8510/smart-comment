@@ -32,15 +32,6 @@ class YoutubeApi(Mongodb):
         except Exception as e:
             logger.error('Youtube.Api.get_urlData fail {}'.format(e))            
 
-    def parse_videoId(self, url):
-        try:
-            video_id = urlparse(str(url))
-            q = parse_qs(video_id.query)
-            vid = q["v"][0]
-            return vid
-        except:
-            logger.error("Invalid YouTube URL")
-
     def load_commentReplies(self, item):
         if 'replies' in item.keys():
             for reply in item['replies']['comments']:
@@ -79,9 +70,8 @@ class YoutubeApi(Mongodb):
         except:
             logger.error("Cannot Open URL or Fetch comments at a moment")
 
-    def gen_comment(self, url, maxResult=1):
+    def gen_comment(self, videoId=None, maxResult=1):
         self.commentDetail = defaultdict(list)
-        videoId = self.parse_videoId(url)
         params = {
             'part': "snippet,replies",
             'maxResults': maxResult,
