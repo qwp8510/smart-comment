@@ -21,7 +21,7 @@ class Mongodb():
     @property
     def _db(self):
         try:
-            mdConfig = Config(CURRENT_PATH, 'md_config.json').content
+            mdConfig = Config(join(CURRENT_PATH, 'md_config.json')).content
             cluster = mongodb.format(
                 mdConfig.get('userName', 'weichen'),
                 mdConfig.get('password', 'defaultisnotroot'),

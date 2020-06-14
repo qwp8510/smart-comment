@@ -67,10 +67,10 @@ class Login(Api):
     def __init__(self, host, cachePath):
         self.host = host
         self.cachePath = cachePath
-        lpConfig = Config(CURRENT_PATH, 'lp_config.json').content
+        lpConfig = Config(join(CURRENT_PATH, 'lp_config.json')).content
         self.userName = lpConfig.get('userName', self.userName)
         self.password = lpConfig.get('password', self.password)
-        self.Config = Config(cachePath, 'portal.json')
+        self.Config = Config(join(cachePath, 'portal.json'))
         super(Login, self).__init__(host=host, path='Users/login')
 
     def tokenTimeExpire(self, cacheTime):

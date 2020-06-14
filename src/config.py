@@ -1,11 +1,11 @@
 import json
 from os.path import join, abspath, dirname
 
+CURRENT_PATH = dirname(abspath(__file__))
+
 class Config():
-    def __init__(self, configPath, Dir):
-        self.configPath = configPath
-        self.dir = Dir
-        self.configDir = join(self.configPath, self.dir)
+    def __init__(self, Dir):
+        self.configDir = Dir
 
     @property
     def content(self):
