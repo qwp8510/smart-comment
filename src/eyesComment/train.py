@@ -55,7 +55,7 @@ class Train():
             self.save(epoch_idx)
 
     def save(self, idx):
-        model_idx_dir = path.join(self.time_model_dir, idx)
+        model_idx_dir = path.join(self.time_model_dir, "{}.h5".format(idx))
         self.model.save(model_idx_dir)
 
 
