@@ -10,8 +10,8 @@ from tensorflow import keras
 from .bert_tensorflow.tokenization import FullTokenizer
 
 logger = logging.getLogger(__name__)
-CURRENT_PATH = path.dirname(path.abspath(__file__))
-VOCAB_DIR = path.join(CURRENT_PATH, 'bert_tensorflow/assets/vocab.txt')
+CURRENT_DIR = path.dirname(path.abspath(__file__))
+VOCAB_DIR = path.join(CURRENT_DIR, 'bert_tensorflow/assets/vocab.txt')
 
 class HandleTextToInput():
     MAX_NUM_WORDS = 100000
@@ -42,6 +42,7 @@ class HandleTextToInput():
         self.Tokenizer.fit_on_texts(corpus)
         train_text = list(self.padding(x_text))
         return train_text
+
 
 class BertTokenInput():
     def __init__(self, texts, labels, tokenizer, maxLength=30):
@@ -77,6 +78,7 @@ class BertTokenInput():
         for _, text in enumerate(self.texts):
             token = '[CLS]' + ''.join(['[SEP]' if word == ' ' else word for word in text])
             input_ids = self._get_ids(token)
+            print('ids: ', input_ids)
             input_segments = self._get_segments(token)
             input_masks = self._get_masks(token)
             yield np.asarray(input_ids, dtype=np.int32), np.asarray(input_segments, dtype=np.int32), np.asarray(input_masks, dtype=np.int32)
@@ -99,7 +101,7 @@ def load_file(files_dir):
     return head_data, unzip_train_data, np.array(label_data)
 
 def load_trainingData():
-    train_dir = path.join(CURRENT_PATH, 'data/training')
+    train_dir = path.join(CURRENT_DIR, 'data/training')
     return load_file(train_dir)
 
 def main():
