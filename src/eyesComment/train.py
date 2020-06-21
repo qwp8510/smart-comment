@@ -22,6 +22,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 class Train():
     def __init__(self, model, batch_size, lossFunction='binary_crossentropy', learningRate=1e-4):
         utcnow_str = datetime.utcnow().replace(microsecond=0).isoformat()
+        utcnow_str = utcnow_str.replace(':', '-')
         self.time_model_dir = os.path.join(MODEL_DIR, utcnow_str)
         os.makedirs(self.time_model_dir, exist_ok=True)
         self.model = model
