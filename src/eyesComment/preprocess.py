@@ -93,7 +93,7 @@ class BertTokenInput():
             return [1] * len(token) + [0] * (self.maxLength - len(token))
 
     def __call__(self):
-        for _, text in enumerate(self.texts):
+        for idx, text in enumerate(self.texts):
             if isinstance(text, str):
                 text = self.to_lowercase(text)
                 clean_text = self.clean_whitespace(text)
@@ -102,11 +102,12 @@ class BertTokenInput():
                 input_ids = self._get_ids(wordToken)
                 input_segments = self._get_segments(wordToken)
                 input_masks = self._get_masks(wordToken)
-                yield np.asarray(input_ids, dtype=np.int32), np.asarray(input_segments, dtype=np.int32), np.asarray(input_masks, dtype=np.int32)
+                yield np.asarray(input_ids, dtype=np.int32), np.asarray(input_segments, dtype=np.int32), np.asarray(input_masks, dtype=np.int32), np.asarray(self.labels[idx], dtype=np.int32)
 
 def trans_dfToData(df):
     head_cols = df.columns.tolist()[:2]
-    label_cols = df.columns.tolist()[6:9]
+    # label_cols = df.columns.tolist()[6:9]
+    label_cols = df.columns.tolist()[6:7]
     for _, row in df.iterrows():
         h_data = [row[col] for col in head_cols]
         y_data = [row[col] for col in label_cols]
@@ -115,11 +116,10 @@ def trans_dfToData(df):
 def load_file(files_dir):
     files = [os.path.join(files_dir, f) for f in os.listdir(files_dir) if f.endswith('.csv')]
     df = pd.concat([pd.read_csv(f, encoding='utf-8') for f in files], ignore_index=True)
-    # df['text'] = pd.Series(HandleTextToInput().fit(df.loc[:, 'text']))
     shuffled_df = shuffle(df).reset_index(drop=True)
-    unzip_train_data = BertTokenInput(shuffled_df['text'], shuffled_df['toxic'], FullTokenizer(VOCAB_DIR))
     head_data, label_data = zip(*trans_dfToData(shuffled_df))
-    return head_data, unzip_train_data, np.array(label_data)
+    unzip_dataset = BertTokenInput(shuffled_df['text'], shuffled_df['toxic'], FullTokenizer(VOCAB_DIR))
+    return head_data, unzip_dataset
 
 def load_trainingData():
     train_dir = path.join(CURRENT_DIR, 'data/training')

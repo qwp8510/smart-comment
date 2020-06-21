@@ -62,10 +62,11 @@ class Train():
 
 
 def main():
-    h_train, unzip_x_train, y_train = load_trainingData()
-    input_ids, input_segments, input_masks = zip(*unzip_x_train())
-    input_ids, input_segments, input_masks = np.array(input_ids), np.array(input_segments), np.array(input_masks)
-    logger.info('training data shape ids:{}, segments:{}, masks:{}'.format(input_ids.shape, input_segments.shape, input_masks.shape))
+    h_train, unzip_x_train = load_trainingData()
+    input_ids, input_segments, input_masks, y_train = zip(*unzip_x_train())
+    input_ids, input_segments, input_masks, y_train = np.array(input_ids), np.array(input_segments), np.array(input_masks), np.array(y_train)
+    logger.info('training data shape ids:{}, segments:{}, masks:{}, y_train:{}'.format(
+        input_ids.shape, input_segments.shape, input_masks.shape, y_train.shape))
     BertModel = Model(Config(path.join(CURRENT_DIR, 'bert_tensorflow/bert_config.json')).content)
     x_train = [input_ids, input_masks, input_segments]
     batch_size = 32

@@ -55,7 +55,7 @@ class TDense(keras.layers.Layer):
         return tf.matmul(x, self.kernel, transpose_b=True) + self.bias
 
 def Model(config):
-    output_size = 3
+    output_size = 1
     seq_len = config['max_position_embeddings']
     unique_id = keras.Input(shape=(1,), dtype=tf.int64, name='unique_id')
     input_ids = keras.Input(shape=(seq_len,), dtype=tf.int32, name='input_ids')
