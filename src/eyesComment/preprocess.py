@@ -55,6 +55,10 @@ class BertTokenInput():
         _RE_COMBINE_WHITESPACE = re.compile(r"\s+")
         return _RE_COMBINE_WHITESPACE.sub(" ", token).strip()
 
+    def to_lowercase(self, text):
+        # when tokenize chinese with english text, you must transform to lowercase for tokenize
+        return text.lower()
+
     def _get_ids(self, token):
         PAD = 0
         if len(token) >= self.maxLength:
@@ -91,10 +95,10 @@ class BertTokenInput():
     def __call__(self):
         for _, text in enumerate(self.texts):
             if isinstance(text, str):
+                text = self.to_lowercase(text)
                 clean_text = self.clean_whitespace(text)
                 token = '[CLS]' + ''.join(['[SEP]' if word == ' ' else word for word in clean_text])
                 wordToken = self.tokenizer.tokenize_chinese(token)
-                print('wordToken:',token,  wordToken)
                 input_ids = self._get_ids(wordToken)
                 input_segments = self._get_segments(wordToken)
                 input_masks = self._get_masks(wordToken)
