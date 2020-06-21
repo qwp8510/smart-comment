@@ -180,6 +180,14 @@ class FullTokenizer(object):
 
     return split_tokens
 
+  def tokenize_chinese(self, text):
+    split_tokens = []
+    for token in self.basic_tokenizer.tokenize_chinese(text):
+      for sub_token in self.wordpiece_tokenizer.tokenize(token):
+        split_tokens.append(sub_token)
+
+    return split_tokens
+
   def convert_tokens_to_ids(self, tokens):
     return convert_by_vocab(self.vocab, tokens)
 
@@ -221,6 +229,14 @@ class BasicTokenizer(object):
 
     output_tokens = whitespace_tokenize(" ".join(split_tokens))
     return output_tokens
+
+  def tokenize_chinese(self, text):
+    text = convert_to_unicode(text)
+    text = self._clean_text(text)
+    text = self._tokenize_chinese_chars(text)
+
+    orig_tokens = whitespace_tokenize(text)
+    return orig_tokens
 
   def _run_strip_accents(self, text):
     """Strips accents from a piece of text."""

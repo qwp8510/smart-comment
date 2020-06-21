@@ -16,6 +16,7 @@ from sklearn.model_selection import train_test_split
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 logger = logging.getLogger(__name__)
 MODEL_DIR = os.path.join(CURRENT_DIR, 'models')
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 class Train():

@@ -1,6 +1,6 @@
-import argparse
 import logging
 import os
+import re
 from os import path
 import numpy as np
 import pandas as pd
@@ -51,18 +51,32 @@ class BertTokenInput():
         self.labels = labels
         self.maxLength = maxLength
 
+    def clean_whitespace(self, token):
+        _RE_COMBINE_WHITESPACE = re.compile(r"\s+")
+        return _RE_COMBINE_WHITESPACE.sub(" ", token).strip()
+
     def _get_ids(self, token):
-        wordToken = self.tokenizer.tokenize(token)
-        if len(wordToken) >= self.maxLength:
-            return self.tokenizer.convert_tokens_to_ids(wordToken)[:self.maxLength]
+        PAD = 0
+        if len(token) >= self.maxLength:
+            return self.tokenizer.convert_tokens_to_ids(token)[:self.maxLength]
         else:
-            return self.tokenizer.convert_tokens_to_ids(wordToken) + [0] * (self.maxLength - len(wordToken))
+            return self.tokenizer.convert_tokens_to_ids(token) + [PAD] * (self.maxLength - len(token))
 
     def _get_segments(self, token):
-        def one_hot_encoding():
-            for idx, word in enumerate(token.split('[SEP]', 1)):
-                yield from [idx] * len(word)
-        segments = list(one_hot_encoding())
+        segment = 0
+
+        def get_segment(segment):
+            if segment == 0:
+                return 1
+            else:
+                return 0
+
+        def convert_to_one_hot(segment):
+            for word in token:
+                yield segment
+                if word == '[SEP]':
+                    segment = get_segment(segment)
+        segments = list(convert_to_one_hot(segment))
         if len(segments) >= self.maxLength:
             return segments[:self.maxLength]
         else:
@@ -76,12 +90,15 @@ class BertTokenInput():
 
     def __call__(self):
         for _, text in enumerate(self.texts):
-            token = '[CLS]' + ''.join(['[SEP]' if word == ' ' else word for word in text])
-            input_ids = self._get_ids(token)
-            print('ids: ', input_ids)
-            input_segments = self._get_segments(token)
-            input_masks = self._get_masks(token)
-            yield np.asarray(input_ids, dtype=np.int32), np.asarray(input_segments, dtype=np.int32), np.asarray(input_masks, dtype=np.int32)
+            if isinstance(text, str):
+                clean_text = self.clean_whitespace(text)
+                token = '[CLS]' + ''.join(['[SEP]' if word == ' ' else word for word in clean_text])
+                wordToken = self.tokenizer.tokenize_chinese(token)
+                print('wordToken:',token,  wordToken)
+                input_ids = self._get_ids(wordToken)
+                input_segments = self._get_segments(wordToken)
+                input_masks = self._get_masks(wordToken)
+                yield np.asarray(input_ids, dtype=np.int32), np.asarray(input_segments, dtype=np.int32), np.asarray(input_masks, dtype=np.int32)
 
 def trans_dfToData(df):
     head_cols = df.columns.tolist()[:2]
