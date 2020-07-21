@@ -93,7 +93,7 @@ class BertTokenInput():
             return [1] * len(token) + [0] * (self.maxLength - len(token))
 
     def __call__(self):
-        for idx, text in enumerate(self.texts):
+        for idx, text in enumerate(self.texts[:10]):
             if isinstance(text, str):
                 text = self.to_lowercase(text)
                 clean_text = self.clean_whitespace(text)
@@ -126,11 +126,12 @@ def load_trainingData():
     return load_file(train_dir)
 
 def main():
-    h_train, unzip_x_train, y_train = load_trainingData()
-    input_ids, input_segments, input_masks = zip(*unzip_x_train())
-    input_ids, input_segments, input_masks = np.array(input_ids), np.array(input_segments), np.array(input_masks)
+    h_train, unzip_x_train = load_trainingData()
+    input_ids, input_segments, input_masks, y_train = zip(*unzip_x_train())
+    input_ids, input_segments, input_masks, y_train = np.array(input_ids), np.array(input_segments), np.array(input_masks), np.array(y_train)
     logger.info('ids shape: {}, segments shape {}, masks shape {}'.format(input_ids.shape, input_segments.shape, input_masks.shape))
-    logger.info(input_ids)
+    for y in y_train:
+        logger.info(y)
 
 
 if __name__ == '__main__':

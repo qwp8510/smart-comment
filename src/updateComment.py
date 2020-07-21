@@ -16,7 +16,7 @@ CURRENT_PATH = dirname(abspath(__file__))
 TRAIN_DIR = join(CURRENT_PATH, 'eyesComment/data/unlabel')
 FEATURESLABEL = 'feature.json'
 APIKEY = [
-    # 'AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg',
+    'AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg',
     'AIzaSyCGokxpLFG-7M259tOp7-q7fsqYKqvmQNE',
     'AIzaSyD08pO1kEyZ1t7RXQuAyUFlOTyJO68FZYg',
     'AIzaSyBOWzgpes4ryDn0BHthJjj7vcGr1VlpndA',
@@ -28,6 +28,8 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--video-id', default=None,
                         help='youtube video unique id')
+    parser.add_argument('--channel-id', default=None,
+                        help='youtube channel')
     parser.add_argument('--youtube-api-key', default='AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o',
                         help='youtube api key')
     parser.add_argument('--dry-run', action='store_true',
@@ -111,10 +113,19 @@ def gen_filePath(fileDir):
     filePath = join(fileDir, fileName)
     return filePath
 
-def get_video_id():
+def get_video_id(channel_ids):
     channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
-    for video_id in channelApi.get(params={"fields": {"video_id": True}})[1299:]:
-        yield video_id['video_id']
+    for video_id in channelApi.get(params={"fields": {"videoId": True, "channelId": True}}):
+        if video_id['channelId'] in channel_ids:
+            yield video_id['videoId']
+
+
+def get_channel_id():
+    channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
+    video_ids = channelApi.get(params={"fields": {"videoId": True}})
+    ids = [video_id['videoId'] for video_id in video_ids]
+    logger.info('loading video id from db')
+    return ids
 
 class HandleYoutubeApi(MongoYoutube):
     def __init__(
@@ -132,16 +143,16 @@ class HandleYoutubeApi(MongoYoutube):
             key=key, cluster=cluster, db=db, collection=collection
         )
 
-    def get_commentDetail(self, video_id):
+    def get_comment_detail(self, channel_id, video_id):
         global COUNT
         if video_id:
             yield self.gen_comment(video_id, 50)
         else:
-            for video_id in get_video_id():
+            for video_id in get_video_id(channel_id):
                 try:
                     yield self.gen_comment(video_id, 50)
                 except Exception as e:
-                    logger.warning('fail with exception in get_commentDetail: {}'.format(e))
+                    logger.warning('fail with exception in get_comment_detail: {}'.format(e))
                     super(HandleYoutubeApi, self).__init__(
                         key=APIKEY[COUNT], cluster=self.cluster, db=self.dbName, collection=self.collection
                     )
@@ -160,8 +171,10 @@ class HandleYoutubeApi(MongoYoutube):
 
 def main():
     args = _parse_args()
+    if not args.channel_id:
+        args.channel_id = get_channel_id()
     handleYoutubeApi = HandleYoutubeApi(args.youtube_api_key, collection='raw-comment-2020.04.21')
-    commentDetails = handleYoutubeApi.get_commentDetail(args.video_id)
+    commentDetails = handleYoutubeApi.get_comment_detail(args.channel_id, args.video_id)
     if args.save:
         AbstractFeatures().save(TRAIN_DIR, commentDetails)
     if not args.dry_run:

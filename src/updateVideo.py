@@ -2,21 +2,19 @@ import logging
 import argparse
 import json
 from os.path import join, abspath, dirname
-from .api import OwnerApi
+from api import OwnerApi
+from config import Config
+from youtube.channelApi import ChannelApi
+from youtube.youtubeApi import MongoYoutube
 
-from .config import Config
-from .youtube.channelApi import ChannelApi
-from .youtube.youtubeApi import MongoYoutube
 
-# mainKey = 'AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o'
-# backKEY = 'AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg'
-# videourl = 'https://www.youtube.com/watch?v=Azr2SA2Ers4'
 logger = logging.getLogger(__name__)
 CURRENT_PATH = dirname(abspath(__file__))
 
+
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--youtube-api-key', default='AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o',
+    parser.add_argument('--youtube-api-key', default='AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg',
                         help='youtube api key')
     parser.add_argument('--dry-run', action='store_true',
                         help='Show results only, do not plubic')

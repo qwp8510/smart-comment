@@ -54,11 +54,13 @@ class Train():
         self.model.compile(loss=self.lossFunction, optimizer=self.optimizer)
         for epoch_idx in range(epochs):
             self.train_epoch(x_train, y_train, epoch_idx)
-            self.save(epoch_idx)
+        self.save(epoch_idx)
 
     def save(self, idx):
         model_idx_dir = path.join(self.time_model_dir, "{}.h5".format(idx))
         self.model.save(model_idx_dir)
+        # tf.saved_model.save(self.model, model_idx_dir)
+        self.model.save_weights('weights.ckpt')
 
 
 def main():
@@ -70,7 +72,8 @@ def main():
     BertModel = Model(Config(path.join(CURRENT_DIR, 'bert_tensorflow/bert_config.json')).content)
     x_train = [input_ids, input_masks, input_segments]
     batch_size = 32
-    Train(BertModel, batch_size).fit(x_train, y_train)
+    epoch = 1
+    Train(BertModel, batch_size).fit(x_train, y_train, epochs=epoch)
 
 
 if __name__ == '__main__':
