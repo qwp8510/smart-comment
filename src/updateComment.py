@@ -5,11 +5,13 @@ import json
 from time import gmtime, strftime
 from os.path import join, abspath, dirname
 from requests.exceptions import HTTPError
-
+from collections import defaultdict
 from api import OwnerApi
 from config import Config
 from youtube.channelApi import ChannelApi
-from youtube.youtubeApi import MongoYoutube
+from youtube.youtubeApi import YoutubeApi
+from md import Mongodb
+
 
 logger = logging.getLogger(__name__)
 CURRENT_PATH = dirname(abspath(__file__))
@@ -24,11 +26,18 @@ APIKEY = [
 ]
 COUNT = 0
 
+
 def _parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--cluster', default='raw-comment-chinese',
+                        help='Mongodb cluster')
+    parser.add_argument('--db', default='comment-chinese',
+                        help='Mongodb database')
+    parser.add_argument('--collection', default=None,
+                        help='Mongodb collection')
     parser.add_argument('--video-id', default=None,
                         help='youtube video unique id')
-    parser.add_argument('--channel-id', default=None,
+    parser.add_argument('--channel-id', nargs='+', default=None,
                         help='youtube channel')
     parser.add_argument('--youtube-api-key', default='AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o',
                         help='youtube api key')
@@ -107,78 +116,93 @@ class AbstractFeatures():
         FILE_DIR = gen_filePath(fileDIR)
         df.fillna(0).to_csv(FILE_DIR, index=False, encoding='utf-8-sig')   
 
+
 def gen_filePath(fileDir):
     date = strftime("%Y-%m-%d-%H-%M", gmtime())
     fileName = "{}_.csv".format(date)
     filePath = join(fileDir, fileName)
     return filePath
 
-def get_video_id(channel_ids):
+
+def get_video_id(channel_id):
     channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
-    for video_id in channelApi.get(params={"fields": {"videoId": True, "channelId": True}}):
-        if video_id['channelId'] in channel_ids:
-            yield video_id['videoId']
+    for channel_detail in channelApi.get(params={"where":{"channelId": channel_id}}):
+        yield channel_detail['videoId']
 
 
 def get_channel_id():
     channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
-    video_ids = channelApi.get(params={"fields": {"videoId": True}})
-    ids = [video_id['videoId'] for video_id in video_ids]
-    logger.info('loading video id from db')
+    video_ids = channelApi.get(params={"fields": {"channelId": True}})
+    ids = [video_id['channelId'] for video_id in video_ids]
+    logger.info('loading channelId id from db')
     return ids
 
-class HandleYoutubeApi(MongoYoutube):
+class YoutubeApiHandler(YoutubeApi):
+    def __init__(self, key):
+        self.key = key
+        super().__init__(apiKey=key)
+
+    def get_comment_detail(self, video_id):
+        global COUNT
+        try:
+            return self.gen_comment(video_id, 50)
+        except Exception as e:
+            logger.warning('fail with exception in get_comment_detail: {}'.format(e))
+            print(APIKEY[COUNT])
+            COUNT += 1
+            return self.gen_comment(video_id, 50)
+    
+    def get_videos_comment(self, channels_id):
+        channels_comment = defaultdict(list)
+        for channel_id in channels_id:
+            for video_id in get_video_id(channel_id):
+                channels_comment[channel_id].append(self.get_comment_detail(video_id))
+        return channels_comment
+
+
+class MongodbPusher(Mongodb):
     def __init__(
         self,
-        key,
         cluster='raw-comment-chinese',
         db='comment-chinese',
-        collection='raw-comment'
+        collection=None
     ):
-        self.key = key
         self.cluster = cluster
-        self.dbName = db
+        self.db = db
         self.collection = collection
-        super(HandleYoutubeApi, self).__init__(
-            key=key, cluster=cluster, db=db, collection=collection
-        )
 
-    def get_comment_detail(self, channel_id, video_id):
-        global COUNT
-        if video_id:
-            yield self.gen_comment(video_id, 50)
-        else:
-            for video_id in get_video_id(channel_id):
-                try:
-                    yield self.gen_comment(video_id, 50)
-                except Exception as e:
-                    logger.warning('fail with exception in get_comment_detail: {}'.format(e))
-                    super(HandleYoutubeApi, self).__init__(
-                        key=APIKEY[COUNT], cluster=self.cluster, db=self.dbName, collection=self.collection
-                    )
-                    print(APIKEY[COUNT])
-                    COUNT += 1
-                    yield self.gen_comment(video_id, 50)
-    
-    def push_commentDetail(self, commentDetail):
+    def gen_collection(self, channel_id):
+        return 'comment-{}'.format(channel_id)
+
+    def push_comment_detail(self, commentDetail):
         for video_id, detail in commentDetail.items():
-            self.push_comment(detail)
+            self._insert_many(detail)
             logger.info('pushing key: {} video comment detail to mongodb: {} '.format(video_id, detail))
 
-    def push(self, commentDetails):
-        for commentDetail in commentDetails:
-            self.push_commentDetail(commentDetail)
+    def push(self, comments_detail):
+        for channel_id, comment_detail in comments_detail.items():
+            if not self.collection:
+                self.collection = self.gen_collection(channel_id)
+            super().__init__(
+                cluster_name=self.cluster, db_name=self.db, collection_name=self.collection
+            )
+            self.push_comment_detail(comment_detail)
 
 def main():
     args = _parse_args()
     if not args.channel_id:
         args.channel_id = get_channel_id()
-    handleYoutubeApi = HandleYoutubeApi(args.youtube_api_key, collection='raw-comment-2020.04.21')
-    commentDetails = handleYoutubeApi.get_comment_detail(args.channel_id, args.video_id)
+    YoutubeApihandler = YoutubeApiHandler(args.youtube_api_key)
+    comments_detail = YoutubeApihandler.get_videos_comment(args.channel_id)
+    print('comments_detail:', comments_detail)
     if args.save:
-        AbstractFeatures().save(TRAIN_DIR, commentDetails)
+        AbstractFeatures().save(TRAIN_DIR, comments_detail)
     if not args.dry_run:
-        handleYoutubeApi.push(commentDetails)
+        MongodbPusher(
+            cluster=args.cluster,
+            db=args.db,
+            collection=args.collection
+        ).push(comments_detail)
 
 if __name__ == '__main__':
     logging.basicConfig(

@@ -4,31 +4,31 @@ import logging
 from collections import defaultdict
 from urllib.parse import urlparse, urlencode, parse_qs
 from urllib.request import  urlopen
+from urllib.error import HTTPError
 
-from md import Mongodb
 
 logger = logging.getLogger(__name__)
 # KEY = 'AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o'
 # videourl = 'https://www.youtube.com/watch?v=Azr2SA2Ers4'
 
-class YoutubeApi(Mongodb):
+class YoutubeApi():
     YOUTUBE_COMMENT_URL = 'https://www.googleapis.com/youtube/v3/commentThreads'
     YOUTUBE_SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search'
     YOUTUBE_VIDEO_URL = 'https://www.youtube.com/watch?v='
 
-    def __init__(self, apiKey, clusterName, dbName, collectionName):
+    def __init__(self, apiKey):
         self.apiKey = apiKey
-        super(YoutubeApi, self).__init__(
-            clusterName=clusterName, dbName=dbName, collectionName=collectionName
-        )
 
     def get_urlData(self, url, param):
         try:
-            with urlopen(url + '?' + urlencode(param)) as f:
+            youtube_url = url + '?' + urlencode(param)
+            with urlopen(youtube_url) as f:
                 data = f.read()
                 f.close()
             content = data.decode("utf-8")
             return json.loads(content)
+        except HTTPError as e:
+            logger.error('Youtube.Api.get_urlData {} HTTPError fail: {}'.format(youtube_url, e))
         except Exception as e:
             logger.error('Youtube.Api.get_urlData fail {}'.format(e))            
 
@@ -127,12 +127,12 @@ class YoutubeApi(Mongodb):
         logger.info(self.channelVidDetail)
         return self.channelVidDetail
 
-class MongoYoutube(YoutubeApi):
-    def __init__(self, key, cluster, db, collection):
-        super(MongoYoutube, self).__init__(
-            apiKey=key, clusterName=cluster, dbName=db, collectionName=collection
-        )
+# class MongoYoutube(YoutubeApi):
+#     def __init__(self, key, cluster, db, collection):
+#         super(MongoYoutube, self).__init__(
+#             apiKey=key, clusterName=cluster, dbName=db, collectionName=collection
+#         )
 
-    def push_comment(self, comment, dry_run=False):
-        if not dry_run:
-            self._insert_many(comment)
+#     def push_comment(self, comment, dry_run=False):
+#         if not dry_run:
+#             self._insert_many(comment)

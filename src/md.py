@@ -12,10 +12,10 @@ CURRENT_PATH = dirname(abspath(__file__))
 mongodb = 'mongodb+srv://{}:{}@{}-erjue.gcp.mongodb.net/test?retryWrites=true&w=majority'
 
 class Mongodb():
-    def __init__(self, clusterName, dbName, collectionName):
-        self.clusterName = clusterName
-        self.dbName = dbName
-        self.collectionName = collectionName
+    def __init__(self, cluster_name, db_name, collection_name):
+        self.cluster_name = cluster_name
+        self.db_name = db_name
+        self.collection_name = collection_name
         self.db = self._db
 
     @property
@@ -25,15 +25,15 @@ class Mongodb():
             cluster = mongodb.format(
                 mdConfig.get('userName', 'weichen'),
                 mdConfig.get('password', 'defaultisnotroot'),
-                self.clusterName
+                self.cluster_name
             )
-            return pymongo.MongoClient(cluster)[self.dbName]
+            return pymongo.MongoClient(cluster)[self.db_name]
         except Timeout:
-            logger.error('connect Mongodb with {} {} fail'.format(self.clusterName, self.dbName))
+            logger.error('connect Mongodb with {} {} fail'.format(self.cluster_name, self.db_name))
 
     @property
     def _collection(self):
-        return self.db[self.collectionName]
+        return self.db[self.collection_name]
 
     def _get(self, filter_params={}):
         results = self._collection.find(filter_params)
@@ -43,23 +43,23 @@ class Mongodb():
         try:
             self._collection.insert_one(postMessage)
         except:
-            logger.debug("insert {} to {} collection fail".format(postMessage, self.collectionName))
+            logger.debug("insert {} to {} collection fail".format(postMessage, self.collection_name))
 
     def _insert_many(self, postMessages):
         try:
             self._collection.insert_many(postMessages)
         except:
-            logger.debug("insert {} to {} collection fail, insert many format should be [{ },..]".format(postMessages, self.collectionName))
+            logger.debug("insert {} to {} collection fail, insert many format should be [{ },..]".format(postMessages, self.collection_name))
 
     def _delete_one(self, deleteMessage):
         try:
             logger.warning('deleting deleteMessage')
             self._collection.delete_one(deleteMessage)
         except:
-            logger.debug('delete {} to {} collection fail'.format(deleteMessage, self.collectionName))
+            logger.debug('delete {} to {} collection fail'.format(deleteMessage, self.collection_name))
 
     def _update_one(self, updateMessage):
         try:
             self._collection.update_one(updateMessage)
         except:
-            logger.debug("update {} to {} collection fail".format(updateMessage, self.collectionName))
+            logger.debug("update {} to {} collection fail".format(updateMessage, self.collection_name))
