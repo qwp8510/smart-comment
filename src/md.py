@@ -35,30 +35,30 @@ class Mongodb():
     def _collection(self):
         return self.db[self.collection_name]
 
-    def _get(self, filter_params={}):
+    def get(self, filter_params={}):
         results = self._collection.find(filter_params)
         return results
     
-    def _insert_one(self, postMessage):
+    def insert_one(self, postMessage):
         try:
             self._collection.insert_one(postMessage)
         except:
             logger.debug("insert {} to {} collection fail".format(postMessage, self.collection_name))
 
-    def _insert_many(self, postMessages):
+    def insert_many(self, postMessages):
         try:
             self._collection.insert_many(postMessages)
         except:
             logger.debug("insert {} to {} collection fail, insert many format should be [{ },..]".format(postMessages, self.collection_name))
 
-    def _delete_one(self, deleteMessage):
+    def delete_one(self, deleteMessage):
         try:
             logger.warning('deleting deleteMessage')
             self._collection.delete_one(deleteMessage)
         except:
             logger.debug('delete {} to {} collection fail'.format(deleteMessage, self.collection_name))
 
-    def _update_one(self, updateMessage):
+    def update_one(self, updateMessage):
         try:
             self._collection.update_one(updateMessage)
         except:
