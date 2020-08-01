@@ -51,7 +51,7 @@ def _parse_args():
 class VideoApi(OwnerApi):
     def __init__(self, path):
         super(VideoApi, self).__init__(
-            host=Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], path=path
+            host=Config(join(CURRENT_PATH, 'config.json')).content['PORTAL_SERVER'], path=path
         )
     
     def get(self, params=None):
@@ -126,13 +126,13 @@ def gen_filePath(fileDir):
 
 
 def get_video_id(channel_id):
-    channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
+    channelApi = ChannelApi(Config(join(CURRENT_PATH, 'config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
     for channel_detail in channelApi.get(params={"where":{"channelId": channel_id}}):
         yield channel_detail['videoId']
 
 
 def get_channel_id():
-    channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
+    channelApi = ChannelApi(Config(join(CURRENT_PATH, 'config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
     video_ids = channelApi.get(params={"fields": {"channelId": True}})
     ids = [video_id['channelId'] for video_id in video_ids]
     logger.info('loading channelId id from db')

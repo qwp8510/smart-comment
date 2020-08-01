@@ -21,10 +21,10 @@ class Mongodb():
     @property
     def _db(self):
         try:
-            mdConfig = Config(join(CURRENT_PATH, 'md_config.json')).content
+            mdConfig = Config(join(CURRENT_PATH, 'config.json')).content
             cluster = mongodb.format(
-                mdConfig.get('userName', 'weichen'),
-                mdConfig.get('password', 'defaultisnotroot'),
+                mdConfig.get('MD_USERNAME'),
+                mdConfig.get('MD_PASSWORD'),
                 self.cluster_name
             )
             return pymongo.MongoClient(cluster)[self.db_name]

@@ -22,20 +22,20 @@ def _parse_args():
 
 
 def get_channel_detail():
-    data = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_channels').get()
+    data = ChannelApi(Config(join(CURRENT_PATH, 'config.json')).content['PORTAL_SERVER'], 'Youtube_channels').get()
     logger.info('data: {}'.format(data))
     return data
 
 
 def push_channel_video(videoData):
     try:
-        ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos').push(data=videoData)
+        ChannelApi(Config(join(CURRENT_PATH, 'config.json')).content['PORTAL_SERVER'], 'Youtube_videos').push(data=videoData)
     except Exception as e:
         logger.warning('warning occure push_channel_video: {}'.format(e))
 
 
 def get_video_id():
-    channel_api = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
+    channel_api = ChannelApi(Config(join(CURRENT_PATH, 'config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
     video_ids = channel_api.get(params={"fields": {"videoId": True}})
     ids = [video_id['videoId'] for video_id in video_ids]
     logger.info('loading video id from db')
