@@ -11,6 +11,7 @@ from config import Config
 from youtube.channelApi import ChannelApi
 from youtube.youtubeApi import YoutubeApi
 from md import Mongodb
+from itertools import chain
 
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ def _parse_args():
     parser.add_argument('--save', action='store_true',
                         help='save to csv')
     return parser.parse_args()
+
 
 class VideoApi(OwnerApi):
     def __init__(self, path):
@@ -142,25 +144,15 @@ class YoutubeApiHandler(YoutubeApi):
         self.key = key
         super().__init__(apiKey=key)
 
-    def get_comment_detail(self, video_id):
-        global COUNT
-        try:
-            return self.gen_comment(video_id, 50)
-        except Exception as e:
-            logger.warning('fail with exception in get_comment_detail: {}'.format(e))
-            print(APIKEY[COUNT])
-            COUNT += 1
-            return self.gen_comment(video_id, 50)
+    def get_comment_detail(self, channel_id):
+        for video_id in get_video_id(channel_id):
+            yield video_id, self.gen_comment(video_id, 50)
     
     def get_videos_comment(self, channels_id):
-        channels_comment = defaultdict(list)
         for channel_id in channels_id:
-            for video_id in get_video_id(channel_id):
-                channels_comment[channel_id].append(self.get_comment_detail(video_id))
-        return channels_comment
+            yield channel_id, dict(self.get_comment_detail(channel_id))
 
-
-class MongodbPusher(Mongodb):
+class Handler(Mongodb):
     def __init__(
         self,
         cluster='raw-comment-chinese',
@@ -174,35 +166,43 @@ class MongodbPusher(Mongodb):
     def gen_collection(self, channel_id):
         return 'comment-{}'.format(channel_id)
 
-    def push_comment_detail(self, commentDetail):
-        for video_id, detail in commentDetail.items():
-            self._insert_many(detail)
-            logger.info('pushing key: {} video comment detail to mongodb: {} '.format(video_id, detail))
+    def push_comment_detail(self, comment_detail):
+        for video_id, video_comments_detail in comment_detail.items():
+            post_message = list(chain(*video_comments_detail.values()))
+            if post_message:
+                self.insert_many(post_message)
+                logger.info(
+                    'pushing key: {} video comment detail to mongodb: {}'.format(video_id, video_comments_detail)
+                )
+            else:
+                logger.debug(
+                    'fial pushing key:{} video comment detail to mongodb: {}'.format(video_id, video_comments_detail)
+                )
 
-    def push(self, comments_detail):
-        for channel_id, comment_detail in comments_detail.items():
+    def push_collection(self, comments_detail):
+        for channel_id, channel_comments_detail in comments_detail.items():
             if not self.collection:
                 self.collection = self.gen_collection(channel_id)
             super().__init__(
                 cluster_name=self.cluster, db_name=self.db, collection_name=self.collection
             )
-            self.push_comment_detail(comment_detail)
+            self.push_comment_detail(channel_comments_detail)
 
 def main():
     args = _parse_args()
     if not args.channel_id:
         args.channel_id = get_channel_id()
     YoutubeApihandler = YoutubeApiHandler(args.youtube_api_key)
-    comments_detail = YoutubeApihandler.get_videos_comment(args.channel_id)
+    comments_detail = dict(YoutubeApihandler.get_videos_comment(args.channel_id))
     print('comments_detail:', comments_detail)
     if args.save:
         AbstractFeatures().save(TRAIN_DIR, comments_detail)
     if not args.dry_run:
-        MongodbPusher(
+        Handler(
             cluster=args.cluster,
             db=args.db,
             collection=args.collection
-        ).push(comments_detail)
+        ).push_collection(comments_detail)
 
 if __name__ == '__main__':
     logging.basicConfig(

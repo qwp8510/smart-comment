@@ -3,13 +3,19 @@ import json
 import logging
 from collections import defaultdict
 from urllib.parse import urlparse, urlencode, parse_qs
-from urllib.request import  urlopen
+from urllib.request import urlopen
 from urllib.error import HTTPError
 
 
 logger = logging.getLogger(__name__)
 # KEY = 'AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o'
 # videourl = 'https://www.youtube.com/watch?v=Azr2SA2Ers4'
+API_KEY = [
+    'AIzaSyCGokxpLFG-7M259tOp7-q7fsqYKqvmQNE',
+    'AIzaSyD08pO1kEyZ1t7RXQuAyUFlOTyJO68FZYg',
+    'AIzaSyBOWzgpes4ryDn0BHthJjj7vcGr1VlpndA',
+    'AIzaSyBaFMdTVrz6pJhSosmWNMaailKVWElkjIw'
+]
 
 class YoutubeApi():
     YOUTUBE_COMMENT_URL = 'https://www.googleapis.com/youtube/v3/commentThreads'
@@ -19,18 +25,39 @@ class YoutubeApi():
     def __init__(self, apiKey):
         self.apiKey = apiKey
 
+    def update_param_api_key(self, url, param):
+        logger.warning('Youtube.Api.update param api key')
+        def check_http():
+            youtube_url = url + '?' + urlencode(param)
+            try:
+                return urlopen(youtube_url)
+            except HTTPError as e:
+                logger.error('update_param_api_key fail {} HTTPEroor: {}'.format(youtube_url, e))    
+            except Exception as e:
+                logger.error('update_param_api_key fail Exception {}'.format(e))    
+
+        for key in API_KEY:
+            param.update({'key': key})
+            if check_http():
+                return param
+
     def get_urlData(self, url, param):
+        content = '{}'
         try:
             youtube_url = url + '?' + urlencode(param)
             with urlopen(youtube_url) as f:
                 data = f.read()
                 f.close()
             content = data.decode("utf-8")
-            return json.loads(content)
         except HTTPError as e:
+            param = self.update_param_api_key(url, param)
+            if param:
+                return self.get_urlData(url, param)
             logger.error('Youtube.Api.get_urlData {} HTTPError fail: {}'.format(youtube_url, e))
         except Exception as e:
-            logger.error('Youtube.Api.get_urlData fail {}'.format(e))            
+            logger.error('Youtube.Api.get_urlData fail Exception {}'.format(e))
+        return json.loads(content)
+                  
 
     def load_commentReplies(self, item):
         if 'replies' in item.keys():
@@ -41,7 +68,7 @@ class YoutubeApi():
                 })
 
     def load_comment(self, data):
-        for item in data["items"]:
+        for item in data.get("items", {}):
             comment = item["snippet"]["topLevelComment"]
             detail = {
                 'commentId': comment["id"],
@@ -85,7 +112,7 @@ class YoutubeApi():
         return self.commentDetail
 
     def load_channelVideo(self, data):
-        for result in data['items']:
+        for result in data.get('items', {}):
             if result["id"]["kind"] == "youtube#video":
                 snippet = result['snippet']
                 detail = {

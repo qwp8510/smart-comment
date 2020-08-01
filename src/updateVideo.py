@@ -20,16 +20,19 @@ def _parse_args():
                         help='Show results only, do not plubic')
     return parser.parse_args()
 
+
 def get_channelDetail():
     data = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_channels').get()
     logger.info('data: {}'.format(data))
     return data
+
 
 def push_channelVideo(videoData):
     try:
         ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos').push(data=videoData)
     except Exception as e:
         logger.warning('warning occure push_channelVideo: {}'.format(e))
+
 
 def get_videoId():
     channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
@@ -38,9 +41,11 @@ def get_videoId():
     logger.info('loading video id from db')
     return ids
 
+
 def videoIdExist(videoId, videoId_db):
     if videoId in videoId_db:
         return True
+
 
 def main():
     args = _parse_args()
@@ -60,6 +65,7 @@ def main():
                 push_channelVideo(detail)
             else:
                 logger.info("Skip due to videoId '{}' exit".format(key))
+
 
 if __name__ == '__main__':
     logging.basicConfig(

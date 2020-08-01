@@ -43,23 +43,24 @@ class Mongodb():
         try:
             self._collection.insert_one(postMessage)
         except:
-            logger.debug("insert {} to {} collection fail".format(postMessage, self.collection_name))
+            logger.warning("insert {} to {} collection fail".format(postMessage, self.collection_name))
 
     def insert_many(self, postMessages):
         try:
             self._collection.insert_many(postMessages)
         except:
-            logger.debug("insert {} to {} collection fail, insert many format should be [{ },..]".format(postMessages, self.collection_name))
+            print('postMessages:', postMessages, 'self.collection_name:', self.collection_name)
+            logger.warning("insert {} to {} collection fail, insert many format should be [{ },..]".format(postMessages, self.collection_name))
 
     def delete_one(self, deleteMessage):
         try:
             logger.warning('deleting deleteMessage')
             self._collection.delete_one(deleteMessage)
         except:
-            logger.debug('delete {} to {} collection fail'.format(deleteMessage, self.collection_name))
+            logger.warning('delete {} to {} collection fail'.format(deleteMessage, self.collection_name))
 
     def update_one(self, updateMessage):
         try:
             self._collection.update_one(updateMessage)
         except:
-            logger.debug("update {} to {} collection fail".format(updateMessage, self.collection_name))
+            logger.warning("update {} to {} collection fail".format(updateMessage, self.collection_name))
