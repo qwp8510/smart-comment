@@ -21,44 +21,44 @@ def _parse_args():
     return parser.parse_args()
 
 
-def get_channelDetail():
+def get_channel_detail():
     data = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_channels').get()
     logger.info('data: {}'.format(data))
     return data
 
 
-def push_channelVideo(videoData):
+def push_channel_video(videoData):
     try:
         ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos').push(data=videoData)
     except Exception as e:
-        logger.warning('warning occure push_channelVideo: {}'.format(e))
+        logger.warning('warning occure push_channel_video: {}'.format(e))
 
 
-def get_videoId():
-    channelApi = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
-    videoIds = channelApi.get(params={"fields": {"videoId": True}})
-    ids = [videoId['videoId'] for videoId in videoIds]
+def get_video_id():
+    channel_api = ChannelApi(Config(join(CURRENT_PATH, 'lp_config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
+    video_ids = channel_api.get(params={"fields": {"videoId": True}})
+    ids = [video_id['videoId'] for video_id in video_ids]
     logger.info('loading video id from db')
     return ids
 
 
-def videoIdExist(videoId, videoId_db):
-    if videoId in videoId_db:
+def video_id_exist(video_id, video_id_db):
+    if video_id in video_id_db:
         return True
 
 
 def main():
     args = _parse_args()
-    youtubeApi = YoutubeApi(args.youtube_api_key)
-    channelDetail = get_channelDetail()
-    videoId_db = get_videoId()
-    for channel in channelDetail:
-        videoDetail = youtubeApi.gen_channelVideo(channel['channelId'], maxResult=40)
+    youtube_api = YoutubeApi(args.youtube_api_key)
+    channel_detail = get_channel_detail()
+    video_id_db = get_video_id()
+    for channel in channel_detail:
+        video_detail = youtube_api.gen_channelVideo(channel['channelId'], maxResult=40)
         if args.dry_run:  return 
-        for key, detail in videoDetail.items():
-            if not videoIdExist(key, videoId_db):
+        for key, detail in video_detail.items():
+            if not video_id_exist(key, video_id_db):
                 logger.info("push data: {}".format(detail))
-                push_channelVideo(detail)
+                push_channel_video(detail)
             else:
                 logger.info("Skip due to videoId '{}' exit".format(key))
 
