@@ -8,8 +8,8 @@ from requests.exceptions import HTTPError
 from collections import defaultdict
 from api import OwnerApi
 from config import Config
-from youtube.channelApi import ChannelApi
-from youtube.youtubeApi import YoutubeApi
+from youtube.channel_api import ChannelApi
+from youtube.youtube_api import YoutubeApi
 from md import Mongodb
 from itertools import chain
 
@@ -25,7 +25,6 @@ APIKEY = [
     'AIzaSyBOWzgpes4ryDn0BHthJjj7vcGr1VlpndA',
     'AIzaSyBaFMdTVrz6pJhSosmWNMaailKVWElkjIw'
 ]
-COUNT = 0
 
 
 def _parse_args():
