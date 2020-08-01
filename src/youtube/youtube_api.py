@@ -151,7 +151,7 @@ class YoutubeApi():
         content = self.get_urlData(self.YOUTUBE_SEARCH_URL, params)
         self.load_channelVideo(content)
         self.gen_videoByPage(params, content)
-        logger.info(self.channelVidDetail)
+        logger.info('gen_channelVideo: {}'.format(self.channelVidDetail))
         return self.channelVidDetail
 
 # class MongoYoutube(YoutubeApi):

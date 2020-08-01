@@ -4,8 +4,8 @@ import json
 from os.path import join, abspath, dirname
 from api import OwnerApi
 from config import Config
-from youtube.channelApi import ChannelApi
-from youtube.youtubeApi import MongoYoutube
+from youtube.channel_api import ChannelApi
+from youtube.youtube_api import YoutubeApi
 
 
 logger = logging.getLogger(__name__)
@@ -49,16 +49,12 @@ def videoIdExist(videoId, videoId_db):
 
 def main():
     args = _parse_args()
-    youtubeApi = MongoYoutube(
-        key=args.youtube_api_key,
-        cluster='raw-comment-chinese',
-        db='comment-chinese',
-        collection='raw-comment'
-    )
+    youtubeApi = YoutubeApi(args.youtube_api_key)
     channelDetail = get_channelDetail()
     videoId_db = get_videoId()
     for channel in channelDetail:
         videoDetail = youtubeApi.gen_channelVideo(channel['channelId'], maxResult=40)
+        if args.dry_run:  return 
         for key, detail in videoDetail.items():
             if not videoIdExist(key, videoId_db):
                 logger.info("push data: {}".format(detail))

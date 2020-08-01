@@ -193,7 +193,6 @@ def main():
         args.channel_id = get_channel_id()
     YoutubeApihandler = YoutubeApiHandler(args.youtube_api_key)
     comments_detail = dict(YoutubeApihandler.get_videos_comment(args.channel_id))
-    print('comments_detail:', comments_detail)
     if args.save:
         AbstractFeatures().save(TRAIN_DIR, comments_detail)
     if not args.dry_run:
