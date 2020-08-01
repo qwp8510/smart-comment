@@ -53,7 +53,7 @@ def main():
     channel_detail = get_channel_detail()
     video_id_db = get_video_id()
     for channel in channel_detail:
-        video_detail = youtube_api.gen_channelVideo(channel['channelId'], maxResult=40)
+        video_detail = youtube_api.gen_channel_video(channel['channelId'], max_result=40)
         if args.dry_run:  return 
         for key, detail in video_detail.items():
             if not video_id_exist(key, video_id_db):

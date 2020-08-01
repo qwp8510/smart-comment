@@ -41,7 +41,7 @@ class YoutubeApi():
             if check_http():
                 return param
 
-    def get_urlData(self, url, param):
+    def get_url_data(self, url, param):
         content = '{}'
         try:
             youtube_url = url + '?' + urlencode(param)
@@ -52,17 +52,17 @@ class YoutubeApi():
         except HTTPError as e:
             param = self.update_param_api_key(url, param)
             if param:
-                return self.get_urlData(url, param)
-            logger.error('Youtube.Api.get_urlData {} HTTPError fail: {}'.format(youtube_url, e))
+                return self.get_url_data(url, param)
+            logger.error('Youtube.Api.get_url_data {} HTTPError fail: {}'.format(youtube_url, e))
         except Exception as e:
-            logger.error('Youtube.Api.get_urlData fail Exception {}'.format(e))
+            logger.error('Youtube.Api.get_url_data fail Exception {}'.format(e))
         return json.loads(content)
                   
 
-    def load_commentReplies(self, item):
+    def load_comment_replies(self, item):
         if 'replies' in item.keys():
             for reply in item['replies']['comments']:
-                self.commentDetail.update({
+                self.comment_detail.update({
                     'replyAuthor': reply['snippet']['authorDisplayName'],
                     'replyText': reply["snippet"]["textDisplay"]
                 })
@@ -81,15 +81,15 @@ class YoutubeApi():
                 'replyCount': item['snippet']['totalReplyCount']
             }
             logger.info('YoutubeApi.load_comment loading {} comment: {}'.format(item["snippet"]['videoId'], detail))
-            self.commentDetail[item["snippet"]['videoId']].append(detail)
-            # self.load_commentReplies(item)
+            self.comment_detail[item["snippet"]['videoId']].append(detail)
+            # self.load_comment_replies(item)
 
-    def gen_commentByPage(self, params, content):
+    def gen_comment_by_page(self, params, content):
         try:
             nextPageToken = content.get('nextPageToken')
             while nextPageToken:
                 params.update({'pageToken': nextPageToken})
-                content = self.get_urlData(self.YOUTUBE_COMMENT_URL, params)
+                content = self.get_url_data(self.YOUTUBE_COMMENT_URL, params)
                 self.load_comment(content)
                 nextPageToken = content.get('nextPageToken')
         except KeyboardInterrupt:
@@ -97,21 +97,21 @@ class YoutubeApi():
         except:
             logger.error("Cannot Open URL or Fetch comments at a moment")
 
-    def gen_comment(self, videoId=None, maxResult=1):
-        self.commentDetail = defaultdict(list)
+    def gen_comment(self, video_id=None, max_result=1):
+        self.comment_detail = defaultdict(list)
         params = {
             'part': "snippet,replies",
-            'maxResults': maxResult,
-            'videoId': videoId,
+            'maxResults': max_result,
+            'videoId': video_id,
             'textFormat': 'plainText',
             'key': self.apiKey
         }
-        content = self.get_urlData(self.YOUTUBE_COMMENT_URL, params)
+        content = self.get_url_data(self.YOUTUBE_COMMENT_URL, params)
         self.load_comment(content)
-        self.gen_commentByPage(params, content)
-        return self.commentDetail
+        self.gen_comment_by_page(params, content)
+        return self.comment_detail
 
-    def load_channelVideo(self, data):
+    def load_channel_video(self, data):
         for result in data.get('items', {}):
             if result["id"]["kind"] == "youtube#video":
                 snippet = result['snippet']
@@ -125,34 +125,34 @@ class YoutubeApi():
                     'liveBroadcastContent': snippet['liveBroadcastContent'],
                     'publishedAt': snippet['publishedAt']
                 }
-                self.channelVidDetail[result['id']['videoId']].append(detail)
+                self.channel_video_detail[result['id']['videoId']].append(detail)
 
-    def gen_videoByPage(self, params, content):
+    def gen_video_by_page(self, params, content):
         try:
             nextPageToken = content.get('nextPageToken')
             while nextPageToken:
                 params.update({'pageToken': nextPageToken})
-                content = self.get_urlData(self.YOUTUBE_SEARCH_URL, params)
-                self.load_channelVideo(content)
+                content = self.get_url_data(self.YOUTUBE_SEARCH_URL, params)
+                self.load_channel_video(content)
                 nextPageToken = content.get('nextPageToken')
         except KeyboardInterrupt:
             logger.warning("User Aborted the Operation")
         except:
             logger.error("Cannot Open URL or Fetch comments at a moment")
 
-    def gen_channelVideo(self, channelId, maxResult=1):
-        self.channelVidDetail = defaultdict(list)
+    def gen_channel_video(self, channel_id, max_result=1):
+        self.channel_video_detail = defaultdict(list)
         params = {
             'part': 'id,snippet',
-            'channelId': channelId,
-            'maxResults': maxResult,
+            'channelId': channel_id,
+            'maxResults': max_result,
             'key': self.apiKey
         }
-        content = self.get_urlData(self.YOUTUBE_SEARCH_URL, params)
-        self.load_channelVideo(content)
-        self.gen_videoByPage(params, content)
-        logger.info('gen_channelVideo: {}'.format(self.channelVidDetail))
-        return self.channelVidDetail
+        content = self.get_url_data(self.YOUTUBE_SEARCH_URL, params)
+        self.load_channel_video(content)
+        self.gen_video_by_page(params, content)
+        logger.info('gen_channel_video: {}'.format(self.channel_video_detail))
+        return self.channel_video_detail
 
 # class MongoYoutube(YoutubeApi):
 #     def __init__(self, key, cluster, db, collection):
