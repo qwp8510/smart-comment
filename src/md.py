@@ -4,25 +4,25 @@ import json
 from os.path import join, abspath, dirname
 from requests import Timeout
 
-from config import Config
+from .config import Config
 
 logger = logging.getLogger(__name__)
 # mongodb = 'mongodb+srv://weichen:defaultisnotroot@raw-comment-chinese-erjue.gcp.mongodb.net/test?retryWrites=true&w=majority'
 CURRENT_PATH = dirname(abspath(__file__))
-mongodb = 'mongodb+srv://{}:{}@{}-erjue.gcp.mongodb.net/test?retryWrites=true&w=majority'
+
 
 class Mongodb():
     def __init__(self, cluster_name, db_name, collection_name):
+        self.mongo_server = 'mongodb+srv://{}:{}@{}-erjue.gcp.mongodb.net/test?retryWrites=true&w=majority'
         self.cluster_name = cluster_name
         self.db_name = db_name
         self.collection_name = collection_name
-        self.db = self._db
+        self.db = self._db()
 
-    @property
     def _db(self):
         try:
             mdConfig = Config(join(CURRENT_PATH, 'config.json')).content
-            cluster = mongodb.format(
+            cluster = self.mongo_server.format(
                 mdConfig.get('MD_USERNAME'),
                 mdConfig.get('MD_PASSWORD'),
                 self.cluster_name

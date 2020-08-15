@@ -5,13 +5,15 @@ import requests
 import json
 import time
 from requests.exceptions import HTTPError
-from config import Config
 from urllib.parse import urlparse, urlencode, parse_qs
 from urllib.request import  urlopen
+from .config import Config
+
 
 DEFAULT_TIMEOUT = (15, 15)
 logger = logging.getLogger(__name__)
 CURRENT_PATH = dirname(abspath(__file__))
+
 
 class Api():
     def __init__(self, host, path):
@@ -67,9 +69,9 @@ class Login(Api):
     def __init__(self, host, cachePath):
         self.host = host
         self.cachePath = cachePath
-        lpConfig = Config(join(CURRENT_PATH, 'lp_config.json')).content
-        self.userName = lpConfig.get('userName', self.userName)
-        self.password = lpConfig.get('password', self.password)
+        lpConfig = Config(join(CURRENT_PATH, 'config.json')).content
+        self.userName = lpConfig.get('API_USERNAME', self.userName)
+        self.password = lpConfig.get('API_PASSWORD', self.password)
         self.Config = Config(join(cachePath, 'portal.json'))
         super(Login, self).__init__(host=host, path='Users/login')
 
