@@ -168,7 +168,7 @@ class Encoder(nn.Module):
         #cell = [n layers * n directions, batch size, hid dim]
 
         #outputs are always from the top hidden layer
-        return hidden, cell
+        return outputs, hidden, cell
     
 
 class Decoder(nn.Module):
@@ -221,9 +221,9 @@ class Seq2Seq(nn.Module):
         outputs = torch.zeros(target_length, batch_size, trg_vocab_size)
 
         #last hidden state of the encoder is used as the initial hidden state of the decoder
-        output, hidden, cell = self.encoder(src)
+        result, hidden, cell = self.encoder(src)
         
-        #first input to the decoder is the <sos> tokens
+        #first input to the decoder is the [CLS] tokens
         inp = trg[:, 0]
         
         for t in range(target_length):
