@@ -1,4 +1,4 @@
-from src.eyesComment.text_clustering import main
+from src.smart_features.text_clustering.train import main
 import logging
 
 

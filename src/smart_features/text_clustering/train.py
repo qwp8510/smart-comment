@@ -5,10 +5,10 @@ from os import path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from .preprocess import load_comments
+from ..preprocess import load_comments
 from .model import Encoder, Decoder, Seq2Seq
-from ..youtube.channel_api import ChannelApi
-from ..config import Config
+from ...youtube.channel_api import ChannelApi
+from ...config import Config
 
 logger = logging.getLogger(__name__)
 CURRENT_PATH = path.dirname(path.abspath(__file__))
@@ -78,7 +78,8 @@ def main():
     DEC_DROPOUT = 0.5
     h_train, text_train = load_comments()
     logger.info('text train shape: {}'.format(text_train.shape))
-    h_train, h_val, t_train, t_val = train_test_split(h_train, text_train, test_size=0.2, random_state=42)
+    h_train, h_val, t_train, t_val = train_test_split(
+        h_train, text_train, test_size=0.2, random_state=42)
     enc = Encoder(INPUT_DIM, ENC_EMB_DIM, HID_DIM, N_LAYERS, ENC_DROPOUT)
     dec = Decoder(OUTPUT_DIM, DEC_EMB_DIM, HID_DIM, N_LAYERS, DEC_DROPOUT)
     model = Seq2Seq(enc, dec)

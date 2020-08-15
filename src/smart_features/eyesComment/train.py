@@ -7,23 +7,23 @@ import logging
 import os
 from os import path
 from datetime import datetime
-import collections
-from .model import Model
-from ..config import Config
-from .preprocess import load_trainingData
 from sklearn.model_selection import train_test_split
+from .model import Model
+from ...config import Config
+from ..preprocess import load_trainingData
+
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 logger = logging.getLogger(__name__)
-MODEL_DIR = os.path.join(CURRENT_DIR, 'models')
+MODEL_DIR = path.join(CURRENT_DIR, 'models')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
-class Train():
+class Trainer():
     def __init__(self, model, batch_size, lossFunction='binary_crossentropy', learningRate=1e-4):
         utcnow_str = datetime.utcnow().replace(microsecond=0).isoformat()
         utcnow_str = utcnow_str.replace(':', '-')
-        self.time_model_dir = os.path.join(MODEL_DIR, utcnow_str)
+        self.time_model_dir = path.join(MODEL_DIR, utcnow_str)
         os.makedirs(self.time_model_dir, exist_ok=True)
         self.model = model
         self.lossFunction = lossFunction
@@ -73,7 +73,7 @@ def main():
     x_train = [input_ids, input_masks, input_segments]
     batch_size = 32
     epoch = 1
-    Train(BertModel, batch_size).fit(x_train, y_train, epochs=epoch)
+    Trainer(BertModel, batch_size).fit(x_train, y_train, epochs=epoch)
 
 
 if __name__ == '__main__':

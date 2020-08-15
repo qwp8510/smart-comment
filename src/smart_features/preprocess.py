@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.utils import shuffle
 import jieba.posseg as pseg
 from tensorflow import keras
-from .bert_tensorflow.tokenization import FullTokenizer
+from .tokenization import FullTokenizer
 from ..md import Mongodb
 from ..youtube.channel_api import ChannelApi
 from ..update_comment import get_channel_id
@@ -15,7 +15,7 @@ from ..update_comment import get_channel_id
 
 logger = logging.getLogger(__name__)
 CURRENT_DIR = path.dirname(path.abspath(__file__))
-VOCAB_DIR = path.join(CURRENT_DIR, 'bert_tensorflow/assets/vocab.txt')
+VOCAB_DIR = path.join(CURRENT_DIR, 'assets/vocab.txt')
 
 
 class MdCommentLoader(Mongodb):
@@ -226,7 +226,7 @@ def _load_dataframe(file_dir):
 
 
 def load_comments():
-    train_dir = path.join(CURRENT_DIR, 'data/md_training')
+    train_dir = path.join(CURRENT_DIR, 'text_clustering/data/training')
     df = _load_dataframe(train_dir)
     h_data = list(convert_data(df))
     texts_feature = list(BertTokenizer(
@@ -253,7 +253,7 @@ def load_file(files_dir):
 
 
 def load_trainingData():
-    train_dir = path.join(CURRENT_DIR, 'data/training')
+    train_dir = path.join(CURRENT_DIR, 'eyesComment/data/training')
     return load_file(train_dir)
 
 

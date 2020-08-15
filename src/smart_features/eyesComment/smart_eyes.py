@@ -5,10 +5,10 @@ from os import path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from .preprocess import load_smart_eyes_data
+from ..preprocess import load_smart_eyes_data
 from .model import NeuralNet
-from ..youtube.channel_api import ChannelApi
-from ..config import Config
+from ...youtube.channel_api import ChannelApi
+from ...config import Config
 
 
 logger = logging.getLogger(__name__)

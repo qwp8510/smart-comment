@@ -1,4 +1,4 @@
-from src.eyesComment.train import main
+from src.smart_features.eyesComment.train import main
 import logging
 
 logger = logging.getLogger(__name__)
