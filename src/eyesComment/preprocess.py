@@ -8,16 +8,73 @@ from sklearn.utils import shuffle
 import jieba.posseg as pseg
 from tensorflow import keras
 from .bert_tensorflow.tokenization import FullTokenizer
+from ..md import Mongodb
+from ..youtube.channel_api import ChannelApi
+from ..update_comment import get_channel_id
+
 
 logger = logging.getLogger(__name__)
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 VOCAB_DIR = path.join(CURRENT_DIR, 'bert_tensorflow/assets/vocab.txt')
 
-class HandleTextToInput():
+
+class MdCommentLoader(Mongodb):
+    MD_TRAINING_DIR = path.join(CURRENT_DIR, 'data/md_training')
+    columns = [
+        'commentId', 'author', 'videoId', 'publishedAt', 'updatedAt',
+        'replyCount', 'likeCount', 'text'
+    ]
+    def __init__(
+        self,
+        cluster='raw-comment-chinese',
+        db='comment-chinese',
+        collection=None
+    ):
+        self.cluster = cluster
+        self.database = db
+        self.collection = collection
+
+    def gen_collection(self, channel_id):
+        return 'comment-{}'.format(channel_id)
+
+    def gen_comment_dataset(self):
+        for detail in self.get():
+            features_data = {
+                'commentId': detail.get('commentId'),
+                'author': detail.get('author'),
+                'videoId': detail.get('videoId'),
+                'publishedAt': detail.get('publishedAt'),
+                'updatedAt': detail.get('updatedAt'),
+                'replyCount': detail.get('replyCount'),
+                'likeCount': detail.get('likeCount'),
+                'text': re.sub(' ', '', detail.get('text'))
+            }
+            yield features_data
+    
+    def _save(self, dataframe, channel_id):
+        logger.info('save channel_id: {} dataframe'.format(channel_id))
+        file_name = path.join(
+            self.MD_TRAINING_DIR, 'md_data_{}.csv'.format(channel_id))
+        dataframe.to_csv(file_name, index=False, encoding='utf-8-sig')
+
+    def gen(self):
+        channel_ids = pd.unique(get_channel_id())
+        for channel_id in list(channel_ids):
+            collection = self.gen_collection(channel_id)
+            super().__init__(
+                cluster_name=self.cluster, db_name=self.database, collection_name=collection)
+            logger.info('gen channel id: {} comments data'.format(channel_id))
+            comments_dataset = list(self.gen_comment_dataset())
+            comments_dataframe = pd.DataFrame(comments_dataset, columns=self.columns)
+            self._save(comments_dataframe, channel_id)
+
+class JiebaTextTokenizer():
     MAX_NUM_WORDS = 100000
     MAX_SEQ_LENGTH = 100
 
-    def __init__(self):
+    def __init__(self, max_num_words=100000, max_seq_length=100):
+        self.max_num_words = max_num_words
+        self.max_seq_length = max_seq_length
         self.Tokenizer = self.tokenizer
 
     def jieba_tokenize(self, text):
@@ -26,7 +83,7 @@ class HandleTextToInput():
 
     @property
     def tokenizer(self):
-        return keras.preprocessing.text.Tokenizer(num_words=self.MAX_NUM_WORDS)
+        return keras.preprocessing.text.Tokenizer(num_words=self.max_num_words)
 
     def gen_Textsequences(self, *texts):
         for text in texts:
@@ -34,7 +91,7 @@ class HandleTextToInput():
 
     def padding(self, *texts):
         for text in self.gen_Textsequences(*texts):
-            yield from keras.preprocessing.sequence.pad_sequences(text, maxlen=self.MAX_SEQ_LENGTH)
+            yield from keras.preprocessing.sequence.pad_sequences(text, maxlen=self.max_seq_length)
 
     def fit(self, x_text):
         x_text = x_text.apply(self.jieba_tokenize)
@@ -93,7 +150,7 @@ class BertTokenInput():
             return [1] * len(token) + [0] * (self.maxLength - len(token))
 
     def __call__(self):
-        for idx, text in enumerate(self.texts[:10]):
+        for idx, text in enumerate(self.texts):
             if isinstance(text, str):
                 text = self.to_lowercase(text)
                 clean_text = self.clean_whitespace(text)
@@ -104,6 +161,37 @@ class BertTokenInput():
                 input_masks = self._get_masks(wordToken)
                 yield np.asarray(input_ids, dtype=np.int32), np.asarray(input_segments, dtype=np.int32), np.asarray(input_masks, dtype=np.int32), np.asarray(self.labels[idx], dtype=np.int32)
 
+
+class BertTokenizer():
+    def __init__(self, tokenizer, max_length=30, labels=None):
+        self.tokenizer = tokenizer
+        self.maxLength = max_length
+        self.labels = labels
+
+    def clean_whitespace(self, token):
+        _RE_COMBINE_WHITESPACE = re.compile(r"\s+")
+        return _RE_COMBINE_WHITESPACE.sub(" ", token).strip()
+
+    def to_lowercase(self, text):
+        # when tokenize chinese with english text, you must transform to lowercase for tokenize
+        return text.lower()
+
+    def get_id(self, token):
+        PAD = 0
+        if len(token) >= self.maxLength:
+            return self.tokenizer.convert_tokens_to_ids(token)[:self.maxLength]
+        else:
+            return self.tokenizer.convert_tokens_to_ids(token) + [PAD] * (self.maxLength - len(token))
+
+    def fit(self, texts):
+        for idx, text in enumerate(texts):
+            if isinstance(text, str):
+                text = self.to_lowercase(text)
+                clean_text = self.clean_whitespace(text)
+                word_token = self.tokenizer.tokenize_chinese(clean_text)
+                yield np.array(self.get_id(word_token))
+
+
 def trans_dfToData(df):
     head_cols = df.columns.tolist()[:2]
     # label_cols = df.columns.tolist()[6:9]
@@ -113,6 +201,48 @@ def trans_dfToData(df):
         y_data = [row[col] for col in label_cols]
         yield h_data, y_data
 
+
+def convert_data(df):
+    head_cols = df.columns.tolist()[:7]
+    for _, row in df.iterrows():
+        h_data = [row[col] for col in head_cols]
+        yield h_data
+
+
+def convert_smart_eyes_data(df):
+    head_cols = df.columns.tolist()[:3]
+    label_cols = df.columns.tolist()[6:9]
+    for _, row in df.iterrows():
+        h_data = [row[col] for col in head_cols]
+        y_data = [row[col] for col in label_cols]
+        yield h_data, np.array(y_data)
+
+
+def _load_dataframe(file_dir):
+    files = [path.join(file_dir, f) for f in os.listdir(file_dir) if f.endswith('.csv')]
+    df = pd.concat([pd.read_csv(open(f,'rU'), encoding='utf-8', engine='c') for f in files], ignore_index=True)
+    shuffled_df = shuffle(df).reset_index(drop=True)
+    return shuffled_df
+
+
+def load_comments():
+    train_dir = path.join(CURRENT_DIR, 'data/md_training')
+    df = _load_dataframe(train_dir)
+    h_data = list(convert_data(df))
+    texts_feature = list(BertTokenizer(
+        tokenizer=FullTokenizer(VOCAB_DIR), max_length=30).fit(df['text'].astype('str')))
+    return np.array(h_data), np.array(texts_feature)
+
+
+def load_smart_eyes_data():
+    train_dir = path.join(CURRENT_DIR, 'data/training')
+    df = _load_dataframe(train_dir)
+    texts_feature = list(BertTokenizer(
+        tokenizer=FullTokenizer(VOCAB_DIR), max_length=50).fit(df['text'].astype('str')))
+    h_data, y_data = zip(*convert_smart_eyes_data(df))
+    return h_data, np.array(texts_feature), np.array(y_data)
+
+
 def load_file(files_dir):
     files = [os.path.join(files_dir, f) for f in os.listdir(files_dir) if f.endswith('.csv')]
     df = pd.concat([pd.read_csv(f, encoding='utf-8') for f in files], ignore_index=True)
@@ -121,17 +251,16 @@ def load_file(files_dir):
     unzip_dataset = BertTokenInput(shuffled_df['text'], shuffled_df['toxic'], FullTokenizer(VOCAB_DIR))
     return head_data, unzip_dataset
 
+
 def load_trainingData():
     train_dir = path.join(CURRENT_DIR, 'data/training')
     return load_file(train_dir)
 
+
 def main():
-    h_train, unzip_x_train = load_trainingData()
-    input_ids, input_segments, input_masks, y_train = zip(*unzip_x_train())
-    input_ids, input_segments, input_masks, y_train = np.array(input_ids), np.array(input_segments), np.array(input_masks), np.array(y_train)
-    logger.info('ids shape: {}, segments shape {}, masks shape {}'.format(input_ids.shape, input_segments.shape, input_masks.shape))
-    for y in y_train:
-        logger.info(y)
+    MdCommentLoader(
+        cluster='raw-comment-chinese', db='comment-chinese'
+    ).gen()
 
 
 if __name__ == '__main__':

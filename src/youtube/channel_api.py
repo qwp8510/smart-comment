@@ -2,8 +2,8 @@ import logging
 import argparse
 import json
 
-from api import OwnerApi
-from config import Config
+from ..api import OwnerApi
+from ..config import Config
 
 
 class ChannelApi(OwnerApi):
