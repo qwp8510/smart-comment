@@ -1,20 +1,19 @@
 import logging
 import argparse
-import json
-from os.path import join, abspath, dirname
-from api import OwnerApi
-from config import Config
-from youtube.channel_api import ChannelApi
-from youtube.youtube_api import YoutubeApi
+from os import path
+from eyescomment.config import Config
+from eyescomment.youtube.channel_api import ChannelApi
+from eyescomment.youtube_api import YoutubeApi
 
 
 logger = logging.getLogger(__name__)
-CURRENT_PATH = dirname(abspath(__file__))
+CURRENT_PATH = path.dirname(path.abspath(__file__))
 
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--youtube-api-key', default='AIzaSyDDa9SL4Rk4oVGj6rHHqzmZmJSIewGCUgg',
+    parser.add_argument('--youtube-api-key',
+                        default='AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o',
                         help='youtube api key')
     parser.add_argument('--dry-run', action='store_true',
                         help='Show results only, do not plubic')
@@ -22,20 +21,31 @@ def _parse_args():
 
 
 def get_channel_detail():
-    data = ChannelApi(Config(join(CURRENT_PATH, 'config.json')).content['PORTAL_SERVER'], 'Youtube_channels').get()
+    channel_api = ChannelApi(
+        host=Config.instance().get('PORTAL_SERVER'),
+        target_path='Youtube_channels',
+        cache_path=Config.instance().get('CACHE_DIR'))
+    data = channel_api.get()
     logger.info('data: {}'.format(data))
     return data
 
 
-def push_channel_video(videoData):
+def push_channel_video(video_data):
     try:
-        ChannelApi(Config(join(CURRENT_PATH, 'config.json')).content['PORTAL_SERVER'], 'Youtube_videos').push(data=videoData)
+        ChannelApi(
+            host=Config.instance().get('PORTAL_SERVER'),
+            target_path='Youtube_videos',
+            cache_path=Config.instance().get('CACHE_DIR')
+            ).push(data=video_data)
     except Exception as e:
         logger.warning('warning occure push_channel_video: {}'.format(e))
 
 
 def get_video_id():
-    channel_api = ChannelApi(Config(join(CURRENT_PATH, 'config.json')).content['PORTAL_SERVER'], 'Youtube_videos')
+    channel_api = ChannelApi(
+        host=Config.instance().get('PORTAL_SERVER'),
+        target_path='Youtube_videos',
+        cache_path=Config.instance().get('CACHE_DIR'))
     video_ids = channel_api.get(params={"fields": {"videoId": True}})
     ids = [video_id['videoId'] for video_id in video_ids]
     logger.info('loading video id from db')
@@ -49,12 +59,15 @@ def video_id_exist(video_id, video_id_db):
 
 def main():
     args = _parse_args()
+    Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
     youtube_api = YoutubeApi(args.youtube_api_key)
     channel_detail = get_channel_detail()
     video_id_db = get_video_id()
     for channel in channel_detail:
-        video_detail = youtube_api.gen_channel_video(channel['channelId'], max_result=40)
-        if args.dry_run:  return 
+        video_detail = youtube_api.gen_channel_video(
+            channel['channelId'], max_result=40)
+        if args.dry_run:
+            return
         for key, detail in video_detail.items():
             if not video_id_exist(key, video_id_db):
                 logger.info("push data: {}".format(detail))
