@@ -1,7 +1,8 @@
 import logging
 import argparse
-from .eyesComment import train as eyescomment
-from .text_clustering import train as text_clustering
+from preprocess import load_train_data, load_comments, load_smart_eyes_data
+from eyesComment import train as eyescomment
+from text_clustering import train as text_clustering
 
 
 logger = logging.getLogger(__name__)
@@ -17,9 +18,9 @@ def _parse_args():
 def run_trainer(trainer):
     logger.info('ready training feature: {}'.format(trainer))
     if trainer == 'eyescomment':
-        eyescomment.train()
+        eyescomment.train(load_train_data())
     elif trainer == 'text_clustering':
-        text_clustering.train()
+        text_clustering.train(load_comments())
 
 
 def main():

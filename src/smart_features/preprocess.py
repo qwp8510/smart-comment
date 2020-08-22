@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.utils import shuffle
 import jieba.posseg as pseg
 from tensorflow import keras
-from .tokenization import FullTokenizer
+from tokenization import FullTokenizer
 from eyescomment.md import Mongodb
 from ..update_comment import get_channel_id
 
@@ -262,7 +262,7 @@ def load_file(files_dir):
     return head_data, unzip_dataset
 
 
-def load_trainingData():
+def load_train_data():
     train_dir = path.join(CURRENT_DIR, 'eyesComment/data/training')
     return load_file(train_dir)
 

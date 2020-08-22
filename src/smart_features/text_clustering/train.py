@@ -4,8 +4,7 @@ import logging
 from os import path
 from sklearn.model_selection import train_test_split
 
-from ..preprocess import load_comments
-from .model import Encoder, Decoder, Seq2Seq
+from model import Encoder, Decoder, Seq2Seq
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +62,7 @@ class Trainer():
                 epoch, avg_train_loss, avg_val_loss))
 
 
-def train():
+def train(*args):
     max_features = 21128
     BATCH_SIZE = 128
     INPUT_DIM = max_features
@@ -74,7 +73,8 @@ def train():
     N_LAYERS = 2
     ENC_DROPOUT = 0.5
     DEC_DROPOUT = 0.5
-    h_train, text_train = load_comments()
+    training_data = args[0]
+    h_train, text_train = training_data
     logger.info('text train shape: {}'.format(text_train.shape))
     h_train, h_val, t_train, t_val = train_test_split(
         h_train, text_train, test_size=0.2, random_state=42)

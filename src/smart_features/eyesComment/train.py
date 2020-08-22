@@ -4,9 +4,8 @@ import logging
 import os
 from os import path
 from datetime import datetime
-from .model import Model
+from model import Model
 from eyescomment.config import Config
-from ..preprocess import load_trainingData
 
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
@@ -60,8 +59,9 @@ class Trainer():
         self.model.save_weights('weights.ckpt')
 
 
-def train():
-    h_train, unzip_x_train = load_trainingData()
+def train(*args):
+    trainging_data = args[0]
+    h_train, unzip_x_train = trainging_data
     input_ids, input_segments, input_masks, y_train = zip(*unzip_x_train())
     input_ids, input_segments, input_masks, y_train = \
         np.array(input_ids), np.array(input_segments), np.array(input_masks), np.array(y_train)

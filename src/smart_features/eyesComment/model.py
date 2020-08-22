@@ -4,7 +4,7 @@ from tensorflow import keras
 from os import path
 import torch
 import torch.nn as nn
-from .bert_tensorflow.modeling import BertModel
+from bert_tensorflow.modeling import BertModel
 
 
 CURRENT_PATH = path.dirname(path.abspath(__file__))

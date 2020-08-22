@@ -4,8 +4,7 @@ import logging
 from os import path
 from sklearn.model_selection import train_test_split
 
-from ..preprocess import load_smart_eyes_data
-from .model import NeuralNet
+from model import NeuralNet
 
 
 logger = logging.getLogger(__name__)
