@@ -5,9 +5,8 @@ import json
 from time import gmtime, strftime
 from os import path
 from itertools import chain
-from eyescomment.api import OwnerApi
 from eyescomment.config import Config
-from eyescomment.youtube.channel_api import ChannelApi
+from eyescomment.youtube import YoutubeVideo
 from eyescomment.youtube_api import YoutubeApi
 from eyescomment.md import Mongodb
 
@@ -41,76 +40,63 @@ def _parse_args():
     return parser.parse_args()
 
 
-class VideoApi(OwnerApi):
-    def __init__(self, path):
-        super(VideoApi, self).__init__(
-            host=Config.instance().get('PORTAL_SERVER'),
-            target_path=path,
-            cache_path=Config.instance().get('CACHE_DIR')
-        )
-
-    def get(self, params=None):
-        data = super(VideoApi, self).get(params={"filter": json.dumps(params)})
-        return data
-
-
-class AbstractFeatures():
+class CommentsUnlabelData():
     features_label_dir = path.join(
         CURRENT_PATH, 'features_Label', FEATURES_LABEL)
-    frontKeys = []
-    filterKeys = ['publishedAt', 'updatedAt'] + frontKeys
+    front_keys = []
+    filter_keys = ['publishedAt', 'updatedAt'] + front_keys
 
     @property
-    def featuresDict(self):
+    def features_dict(self):
         with open(self.features_label_dir, 'r') as js:
             f = json.load(js)
         return f
 
     def get_column(self, features):
-        return self.frontKeys + list(pd.unique(list(features.values())))
+        return self.front_keys + list(pd.unique(list(features.values())))
 
-    def filterSeries(self, series):
-        for key in self.filterKeys:
+    def filter_series(self, series):
+        for key in self.filter_keys:
             if key in series.keys():
                 del series[key]
         return series
 
-    def trans_seriesFeatures(self, currentSeries, featuresDict):
+    def trans_series_features(self, current_series, features_dict):
         """ transfer current series key to key of json file
         Args:
-            currentSeries: the current series
-            featuresDict: json file with new feature
+            current_series: the current series
+            features_dict: json file with new feature
         Return:
             filter series
         """
 
-        currentSeries = self.filterSeries(currentSeries)
-        for key in currentSeries.keys():
-            if key in self.filterKeys:
-                del currentSeries[key]
+        current_series = self.filter_series(current_series)
+        for key in current_series.keys():
+            if key in self.filter_keys:
+                del current_series[key]
             else:
-                transKey = featuresDict[key]
-                if transKey in currentSeries:
+                transKey = features_dict[key]
+                if transKey in current_series:
                     continue
-                currentSeries[transKey] = currentSeries[key]
-                del currentSeries[key]
-        return currentSeries
+                current_series[transKey] = current_series[key]
+                del current_series[key]
+        return current_series
 
-    def gen_trainingData(self, series):
+    def gen_training_data(self, series):
         df = pd.DataFrame()
-        featuresDict = self.featuresDict
-        featuresColumn = self.get_column(featuresDict)
+        features_dict = self.features_dict
+        features_column = self.get_column(features_dict)
         for data in series:
             for data_values in data.values():
                 for value in data_values:
                     # logging.info('saving {} policy_name dataframe to csv'.format(ser['video_id']))
-                    transSer = self.trans_seriesFeatures(value, featuresDict)
-                    newDf = pd.DataFrame(transSer, columns=featuresColumn, index=[0])
-                    df = pd.concat([df, newDf], ignore_index=True)
+                    transSer = self.trans_series_features(value, features_dict)
+                    new_df = pd.DataFrame(transSer, columns=features_column, index=[0])
+                    df = pd.concat([df, new_df], ignore_index=True)
         return df
 
     def save(self, file_dir, series):
-        df = self.gen_trainingData(series)
+        df = self.gen_training_data(series)
         file_path = gen_file_path(file_dir)
         df.fillna(0).to_csv(file_path, index=False, encoding='utf-8-sig')
 
@@ -121,43 +107,28 @@ def gen_file_path(file_dir):
     return path.join(file_dir, file_name)
 
 
-def get_video_id(channel_id):
-    channel_api = ChannelApi(
-        host=Config.instance().get('PORTAL_SERVER'),
-        target_path='Youtube_videos',
-        cache_path=Config.instance().get('CACHE_DIR'))
-    channels_detail = channel_api.get(params={"where": {"channelId": channel_id}})
-    for channel_detail in channels_detail:
-        yield channel_detail['videoId']
-
-
-def get_channel_id():
-    channel_api = ChannelApi(
-        host=Config.instance().get('PORTAL_SERVER'),
-        target_path='Youtube_videos',
-        cache_path=Config.instance().get('CACHE_DIR'))
-    video_ids = channel_api.get(params={"fields": {"channelId": True}})
-    ids = [video_id['channelId'] for video_id in video_ids]
-    logger.info('loading channelId id from db')
-    return ids
-
-
 class YoutubeApiHandler(YoutubeApi):
     def __init__(self, key):
         self.key = key
         super().__init__(apiKey=key)
 
     def get_comment_detail(self, channel_id):
-        for video_id in get_video_id(channel_id):
-            print('video:', video_id)
+        video_detail = YoutubeVideo(
+            host=Config.instance().get('PORTAL_SERVER'),
+            cache_path=Config.instance().get('CACHE_DIR'),
+            filter_params={"where": {"channelId": channel_id}}
+        )
+        for video in video_detail:
+            video_id = video['videoId']
             yield video_id, self.gen_comment(video_id, 50)
 
     def get_videos_comment(self, channels_id):
-        for channel_id in channels_id:
+        for channel_id_dict in channels_id:
+            channel_id = channel_id_dict['channelId']
             yield channel_id, dict(self.get_comment_detail(channel_id))
 
 
-class Handler(Mongodb):
+class MdHandler(Mongodb):
     def __init__(
         self,
         cluster='raw-comment-chinese',
@@ -200,13 +171,17 @@ def main():
     args = _parse_args()
     Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
     if not args.channel_id:
-        args.channel_id = get_channel_id()
-    YoutubeApihandler = YoutubeApiHandler(args.youtube_api_key)
-    comments_detail = dict(YoutubeApihandler.get_videos_comment(args.channel_id))
+        args.channel_id = YoutubeVideo(
+            host=Config.instance().get('PORTAL_SERVER'),
+            cache_path=Config.instance().get('CACHE_DIR'),
+            filter_params={"fields": {"channelId": True}}
+        )
+    youtube_api_handler = YoutubeApiHandler(args.youtube_api_key)
+    comments_detail = dict(youtube_api_handler.get_videos_comment(args.channel_id))
     if args.save:
-        AbstractFeatures().save(TRAIN_DIR, comments_detail)
+        CommentsUnlabelData().save(TRAIN_DIR, comments_detail)
     if not args.dry_run:
-        Handler(
+        MdHandler(
             cluster=args.cluster,
             db=args.db,
             collection=args.collection
