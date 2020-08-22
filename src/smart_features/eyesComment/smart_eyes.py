@@ -2,13 +2,10 @@ import torch
 import torch.nn as nn
 import logging
 from os import path
-import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from ..preprocess import load_smart_eyes_data
 from .model import NeuralNet
-from ...youtube.channel_api import ChannelApi
-from ...config import Config
 
 
 logger = logging.getLogger(__name__)
@@ -67,13 +64,14 @@ def main():
     maxlen = 50
     BATCH_SIZE = 128
     INPUT_DIM = max_features
-    EMB_DIM =128
+    EMB_DIM = 128
     HID_DIM_1 = 60
     HID_DIM_2 = 16
     OUTPUT_DIM = 3
     h_data, text_data, y_data = load_smart_eyes_data()
     logger.info('text train shape: {}'.format(text_data.shape))
-    x_train, x_val, y_train, y_val = train_test_split(text_data, y_data, test_size=0.2, random_state=42)
+    x_train, x_val, y_train, y_val = train_test_split(
+        text_data, y_data, test_size=0.2, random_state=42)
     model = NeuralNet(
         INPUT_DIM, EMB_DIM, HID_DIM_1, HID_DIM_2, OUTPUT_DIM, maxlen)
     optimizer = torch.optim.Adam(model.parameters())

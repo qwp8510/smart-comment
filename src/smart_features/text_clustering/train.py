@@ -2,13 +2,11 @@ import torch
 import torch.nn as nn
 import logging
 from os import path
-import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from ..preprocess import load_comments
 from .model import Encoder, Decoder, Seq2Seq
-from ...youtube.channel_api import ChannelApi
-from ...config import Config
+
 
 logger = logging.getLogger(__name__)
 CURRENT_PATH = path.dirname(path.abspath(__file__))
@@ -65,7 +63,7 @@ class Trainer():
                 epoch, avg_train_loss, avg_val_loss))
 
 
-def main():
+def train():
     max_features = 21128
     BATCH_SIZE = 128
     INPUT_DIM = max_features

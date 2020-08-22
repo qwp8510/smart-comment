@@ -8,8 +8,7 @@ from sklearn.utils import shuffle
 import jieba.posseg as pseg
 from tensorflow import keras
 from .tokenization import FullTokenizer
-from ..md import Mongodb
-from ..youtube.channel_api import ChannelApi
+from eyescomment.md import Mongodb
 from ..update_comment import get_channel_id
 
 
@@ -24,6 +23,7 @@ class MdCommentLoader(Mongodb):
         'commentId', 'author', 'videoId', 'publishedAt', 'updatedAt',
         'replyCount', 'likeCount', 'text'
     ]
+
     def __init__(
         self,
         cluster='raw-comment-chinese',
@@ -50,7 +50,7 @@ class MdCommentLoader(Mongodb):
                 'text': re.sub(' ', '', detail.get('text'))
             }
             yield features_data
-    
+
     def _save(self, dataframe, channel_id):
         logger.info('save channel_id: {} dataframe'.format(channel_id))
         file_name = path.join(
@@ -67,6 +67,7 @@ class MdCommentLoader(Mongodb):
             comments_dataset = list(self.gen_comment_dataset())
             comments_dataframe = pd.DataFrame(comments_dataset, columns=self.columns)
             self._save(comments_dataframe, channel_id)
+
 
 class JiebaTextTokenizer():
     MAX_NUM_WORDS = 100000
@@ -121,7 +122,8 @@ class BertTokenInput():
         if len(token) >= self.maxLength:
             return self.tokenizer.convert_tokens_to_ids(token)[:self.maxLength]
         else:
-            return self.tokenizer.convert_tokens_to_ids(token) + [PAD] * (self.maxLength - len(token))
+            return self.tokenizer.convert_tokens_to_ids(token)\
+                + [PAD] * (self.maxLength - len(token))
 
     def _get_segments(self, token):
         segment = 0
@@ -159,7 +161,10 @@ class BertTokenInput():
                 input_ids = self._get_ids(wordToken)
                 input_segments = self._get_segments(wordToken)
                 input_masks = self._get_masks(wordToken)
-                yield np.asarray(input_ids, dtype=np.int32), np.asarray(input_segments, dtype=np.int32), np.asarray(input_masks, dtype=np.int32), np.asarray(self.labels[idx], dtype=np.int32)
+                yield np.asarray(input_ids, dtype=np.int32),\
+                    np.asarray(input_segments, dtype=np.int32),\
+                    np.asarray(input_masks, dtype=np.int32),\
+                    np.asarray(self.labels[idx], dtype=np.int32)
 
 
 class BertTokenizer():
@@ -181,7 +186,8 @@ class BertTokenizer():
         if len(token) >= self.maxLength:
             return self.tokenizer.convert_tokens_to_ids(token)[:self.maxLength]
         else:
-            return self.tokenizer.convert_tokens_to_ids(token) + [PAD] * (self.maxLength - len(token))
+            return self.tokenizer.convert_tokens_to_ids(token)\
+                + [PAD] * (self.maxLength - len(token))
 
     def fit(self, texts):
         for idx, text in enumerate(texts):
@@ -220,7 +226,9 @@ def convert_smart_eyes_data(df):
 
 def _load_dataframe(file_dir):
     files = [path.join(file_dir, f) for f in os.listdir(file_dir) if f.endswith('.csv')]
-    df = pd.concat([pd.read_csv(open(f,'rU'), encoding='utf-8', engine='c') for f in files], ignore_index=True)
+    df = pd.concat(
+        [pd.read_csv(open(f, 'rU'), encoding='utf-8', engine='c') for f in files],
+        ignore_index=True)
     shuffled_df = shuffle(df).reset_index(drop=True)
     return shuffled_df
 
@@ -229,6 +237,7 @@ def load_comments():
     train_dir = path.join(CURRENT_DIR, 'text_clustering/data/training')
     df = _load_dataframe(train_dir)
     h_data = list(convert_data(df))
+    logger.info('processing tokenize text')
     texts_feature = list(BertTokenizer(
         tokenizer=FullTokenizer(VOCAB_DIR), max_length=30).fit(df['text'].astype('str')))
     return np.array(h_data), np.array(texts_feature)
@@ -248,7 +257,8 @@ def load_file(files_dir):
     df = pd.concat([pd.read_csv(f, encoding='utf-8') for f in files], ignore_index=True)
     shuffled_df = shuffle(df).reset_index(drop=True)
     head_data, label_data = zip(*trans_dfToData(shuffled_df))
-    unzip_dataset = BertTokenInput(shuffled_df['text'], shuffled_df['toxic'], FullTokenizer(VOCAB_DIR))
+    unzip_dataset = BertTokenInput(
+        shuffled_df['text'], shuffled_df['toxic'], FullTokenizer(VOCAB_DIR))
     return head_data, unzip_dataset
 
 

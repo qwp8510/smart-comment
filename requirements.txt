@@ -10,8 +10,11 @@ flake8==3.7.7
 pytest==4.4.1
 pytz==2017.2
 scikit-learn==0.23.0
+git+ssh://git@github.com/qwp8510/eyescomment-pyutils.git
+torch==1.6.0
 Keras-Applications==1.0.8
 Keras-Preprocessing==1.1.0
 tensorboard==2.1.1
 tensorflow==2.1.0
 tensorflow-estimator==2.1.0
+jieba==0.42.1

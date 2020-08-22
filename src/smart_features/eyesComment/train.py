@@ -1,15 +1,11 @@
-import numpy as np 
-import pandas as pd 
-import tensorflow as tf
+import numpy as np
 from tensorflow import keras
-import json
 import logging
 import os
 from os import path
 from datetime import datetime
-from sklearn.model_selection import train_test_split
 from .model import Model
-from ...config import Config
+from eyescomment.config import Config
 from ..preprocess import load_trainingData
 
 
@@ -31,7 +27,8 @@ class Trainer():
         self.batch_size = batch_size
 
     def custom_loss(self, y_true, y_pred):
-        return keras.callbacks.LearningRateScheduler(keras.backend.reshape(y_true[:,0],(-1,1)), y_pred) * y_true[:,1]
+        return keras.callbacks.LearningRateScheduler(
+            keras.backend.reshape(y_true[:, 0], (-1, 1)), y_pred) * y_true[:, 1]
 
     @property
     def optimizer(self):
@@ -63,22 +60,15 @@ class Trainer():
         self.model.save_weights('weights.ckpt')
 
 
-def main():
+def train():
     h_train, unzip_x_train = load_trainingData()
     input_ids, input_segments, input_masks, y_train = zip(*unzip_x_train())
-    input_ids, input_segments, input_masks, y_train = np.array(input_ids), np.array(input_segments), np.array(input_masks), np.array(y_train)
+    input_ids, input_segments, input_masks, y_train = \
+        np.array(input_ids), np.array(input_segments), np.array(input_masks), np.array(y_train)
     logger.info('training data shape ids:{}, segments:{}, masks:{}, y_train:{}'.format(
         input_ids.shape, input_segments.shape, input_masks.shape, y_train.shape))
-    BertModel = Model(Config(path.join(CURRENT_DIR, 'bert_tensorflow/bert_config.json')).content)
+    BertModel = Model(Config(path.join(CURRENT_DIR, 'bert_tensorflow/bert_config.json')).read())
     x_train = [input_ids, input_masks, input_segments]
     batch_size = 32
     epoch = 1
     Trainer(BertModel, batch_size).fit(x_train, y_train, epochs=epoch)
-
-
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)-15s:%(levelname)s:%(name)s:%(message)s',
-    )
-    main()

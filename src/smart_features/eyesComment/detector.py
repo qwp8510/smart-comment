@@ -1,14 +1,11 @@
-import tensorflow as tf
-from tensorflow import keras
 from .bert_tensorflow.tokenization import FullTokenizer
-from .bert_tensorflow.modeling import BertModel
 from .preprocess import BertTokenInput
 from .model import Model
+from eyescomment.config import Config
 from os import path
 import numpy as np
 import logging
 import re
-import json
 
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
@@ -48,15 +45,14 @@ class Predictor():
     WEIGHTS_PATH = path.join(CURRENT_DIR, 'models', '2020-06-26T16-17-42', 'weights.ckpt')
 
     def __init__(self):
-        MAX_SEQUENCE_LENGTH = 30
+        # MAX_SEQUENCE_LENGTH = 30
         # input_ids = tf.keras.layers.Input((MAX_SEQUENCE_LENGTH,), dtype=tf.int32)
         # input_mask = tf.keras.layers.Input((MAX_SEQUENCE_LENGTH,), dtype=tf.int32)
         # segment_ids = tf.keras.layers.Input((MAX_SEQUENCE_LENGTH,), dtype=tf.int32)
-        # self.model = keras.models.load_model(self.MODEL_PATH, custom_objects={"BertModel": BertModel})
-        with open('/Users/weichen/Desktop/smart_comment/src/eyesComment/bert_tensorflow/bert_config.json') as r:
-            config_file = json.load(r)
-            r.close()
-        self.model = Model(config_file)
+        # self.model = keras.models.load_model(
+        # self.MODEL_PATH, custom_objects={"BertModel": BertModel})
+        config = Config(path.join(CURRENT_DIR, 'bert_tensorflow/bert_config.json')).read()
+        self.model = Model(config)
         self.model.load_weights(self.WEIGHTS_PATH)
         # infer = model.signatures["serving_default"]
         # models = infer('input_ids', 'input_mask', 'segment_ids')
@@ -67,18 +63,19 @@ class Predictor():
 
         print(self.models.summary())
 
-
     def predict(self, text_token):
         result = self.models.predict(text_token)
         return result
 
+
 def main():
-    textTokener = TextTokener()
+    # textTokener = TextTokener()
     predictor = Predictor()
     texts = ['喜歡啾啾鞋的說書風格！不過中途不斷插入換台（章節）的音樂，個人感覺有點突兀，會中斷聽說書的情緒，有點可惜']
     unzip_x_train = BertTokenInput(texts, labels=[0], tokenizer=FullTokenizer(VOCAB_DIR))
     input_ids, input_segments, input_masks, y_train = zip(*unzip_x_train())
-    input_ids, input_segments, input_masks, y_train = np.array(input_ids), np.array(input_segments), np.array(input_masks), np.array(y_train)
+    input_ids, input_segments, input_masks, y_train =\
+        np.array(input_ids), np.array(input_segments), np.array(input_masks), np.array(y_train)
     # for text in texts:
     # text_token = textTokener.tokenize_word(text)
     result = predictor.predict([input_ids, input_masks, input_segments])
