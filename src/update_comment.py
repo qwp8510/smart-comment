@@ -45,7 +45,8 @@ class VideoApi(OwnerApi):
     def __init__(self, path):
         super(VideoApi, self).__init__(
             host=Config.instance().get('PORTAL_SERVER'),
-            path=path
+            target_path=path,
+            cache_path=Config.instance().get('CACHE_DIR')
         )
 
     def get(self, params=None):
