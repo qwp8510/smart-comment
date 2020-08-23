@@ -116,15 +116,16 @@ class YoutubeApiHandler(YoutubeApi):
         video_detail = YoutubeVideo(
             host=Config.instance().get('PORTAL_SERVER'),
             cache_path=Config.instance().get('CACHE_DIR'),
-            filter_params={"where": {"channelId": channel_id}}
-        )
+            filter_params={"where": {"channelId": channel_id}})
         for video in video_detail:
-            video_id = video['videoId']
-            yield video_id, self.gen_comment(video_id, 50)
+            if video['updateTimes'] == 0:
+                video_id = video['videoId']
+                yield video_id, self.gen_comment(video_id, 50)
 
     def get_videos_comment(self, channels_id):
-        for channel_id_dict in channels_id:
-            channel_id = channel_id_dict['channelId']
+        for channel_id in channels_id:
+            if isinstance(channel_id, dict):
+                channel_id = channel_id['channelId']
             yield channel_id, dict(self.get_comment_detail(channel_id))
 
 
