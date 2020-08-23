@@ -8,8 +8,9 @@ from sklearn.utils import shuffle
 import jieba.posseg as pseg
 from tensorflow import keras
 from tokenization import FullTokenizer
+from eyescomment.config import Config
 from eyescomment.md import Mongodb
-from ..update_comment import get_channel_id
+from eyescomment.youtube import YoutubeChannel
 
 
 logger = logging.getLogger(__name__)
@@ -58,10 +59,14 @@ class MdCommentLoader(Mongodb):
         dataframe.to_csv(file_name, index=False, encoding='utf-8-sig')
 
     def gen(self):
-        channel_ids = pd.unique(get_channel_id())
-        for channel_id in list(channel_ids):
+        channels = YoutubeChannel(
+            host=Config.instance().get('PORTAL_SERVER'),
+            cache_path=Config.instance().get('CACHE_DIR'),
+            filter_params={"fields": {"channelId": True}})
+        for channel in channels:
+            channel_id = channel['channelId']
             collection = self.gen_collection(channel_id)
-            super().__init__(
+            super(MdCommentLoader, self).__init__(
                 cluster_name=self.cluster, db_name=self.database, collection_name=collection)
             logger.info('gen channel id: {} comments data'.format(channel_id))
             comments_dataset = list(self.gen_comment_dataset())
@@ -268,6 +273,7 @@ def load_train_data():
 
 
 def main():
+    Config.set_dir(path.join(CURRENT_DIR, '../config.json'))
     MdCommentLoader(
         cluster='raw-comment-chinese', db='comment-chinese'
     ).gen()

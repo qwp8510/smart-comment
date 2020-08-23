@@ -2,4 +2,4 @@
 __pycache__
 *lp_config.json
 *md_config.json
-
+.DS_Store
