@@ -20,38 +20,6 @@ def _parse_args():
     return parser.parse_args()
 
 
-# def get_channel_detail():
-#     channel_api = ChannelApi(
-#         host=Config.instance().get('PORTAL_SERVER'),
-#         target_path='Youtube_channels',
-#         cache_path=Config.instance().get('CACHE_DIR'))
-#     data = channel_api.get()
-#     logger.info('data: {}'.format(data))
-#     return data
-
-
-# def push_channel_video(video_data):
-#     try:
-#         ChannelApi(
-#             host=Config.instance().get('PORTAL_SERVER'),
-#             target_path='Youtube_videos',
-#             cache_path=Config.instance().get('CACHE_DIR')
-#             ).push(data=video_data)
-#     except Exception as e:
-#         logger.warning('warning occure push_channel_video: {}'.format(e))
-
-
-# def get_video_id():
-#     videos = YoutubeVideo(
-#         host=Config.instance().get('PORTAL_SERVER'),
-#         cache_path=Config.instance().get('CACHE_DIR'),
-#         filter_params={"fields": {"videoId": True}}
-#     )
-#     ids = [video['videoId'] for video in videos]
-#     logger.info('loading video id from db')
-#     return ids
-
-
 def video_id_exist(video_id, video_id_db):
     if video_id in video_id_db:
         return True
