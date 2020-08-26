@@ -1,6 +1,7 @@
 import logging
 import argparse
 from os import path
+from urllib.error import HTTPError
 from eyescomment.config import Config
 from eyescomment.youtube import YoutubeVideo, YoutubeChannel
 from eyescomment.youtube_api import YoutubeApi
@@ -36,8 +37,8 @@ def main():
         host=Config.instance().get('PORTAL_SERVER'),
         cache_path=Config.instance().get('CACHE_DIR'),
         filter_params={"fields": {"videoId": True}})
-    logger.info('proccess loading video id')
     video_id_series = [video['videoId'] for video in videos]
+    logger.info('In main loading number of video id: {}'.format(len(video_id_series)))
     for channel in channels_detail:
         logger.info('gen videos by channel id {}'.format(channel['channelId']))
         video_detail = youtube_api.gen_channel_video(
@@ -46,10 +47,15 @@ def main():
             return
         for key, detail in video_detail.items():
             if not video_id_exist(key, video_id_series):
-                logger.info("push data: {}".format(detail))
-                videos.push(detail)
+                try:
+                    videos.push(detail)
+                    logger.info("push data: {}".format(detail))
+                except HTTPError as e:
+                    logger.error('http error at pushing: {}, error meesage:{}'.format(detail, e))
+                except Exception as e:
+                    logger.error('error at pushing: {}, error message: {}'.format(detail, e))
             else:
-                logger.info("Skip due to videoId '{}' exit".format(key))
+                logger.debug("Skip due to videoId '{}' exit".format(key))
 
 
 if __name__ == '__main__':
