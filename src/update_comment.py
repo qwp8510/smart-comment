@@ -6,7 +6,7 @@ from time import gmtime, strftime
 from os import path
 from itertools import chain
 from eyescomment.config import Config
-from eyescomment.youtube import YoutubeVideo
+from eyescomment.youtube import YoutubeVideo, YoutubeChannel
 from eyescomment.youtube_api import YoutubeApi
 from eyescomment.md import Mongodb
 
@@ -108,25 +108,34 @@ def gen_file_path(file_dir):
 
 
 class YoutubeApiHandler(YoutubeApi):
-    def __init__(self, key):
+    def __init__(self, key, patch_update_times):
         self.key = key
+        self.patch_update_times = patch_update_times
         super().__init__(apiKey=key)
 
     def get_comment_detail(self, channel_id):
         video_detail = YoutubeVideo(
             host=Config.instance().get('PORTAL_SERVER'),
             cache_path=Config.instance().get('CACHE_DIR'),
-            filter_params={"where": {"channelId": channel_id}})
+            filter_params={"where": {"channelId": channel_id, "updateTimes": 0}})
         for video in video_detail:
             if video['updateTimes'] == 0:
                 video_id = video['videoId']
+                logger.info('getting video id: {} comment'.format(video_id))
+                if not self.patch_update_times:
+                    new_video_update_times = video['updateTimes'] + 1
+                    video_detail.patch(
+                        id=video['id'], json_data={'updateTimes': new_video_update_times})
                 yield video_id, self.gen_comment(video_id, 50)
 
     def get_videos_comment(self, channels_id):
         for channel_id in channels_id:
             if isinstance(channel_id, dict):
                 channel_id = channel_id['channelId']
-            yield channel_id, dict(self.get_comment_detail(channel_id))
+            logger.info('processing channel id : {} videos'.format(channel_id))
+            comment_detail = dict(self.get_comment_detail(channel_id))
+            if comment_detail:
+                yield channel_id, comment_detail
 
 
 class MdHandler(Mongodb):
@@ -172,12 +181,11 @@ def main():
     args = _parse_args()
     Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
     if not args.channel_id:
-        args.channel_id = YoutubeVideo(
+        args.channel_id = YoutubeChannel(
             host=Config.instance().get('PORTAL_SERVER'),
             cache_path=Config.instance().get('CACHE_DIR'),
-            filter_params={"fields": {"channelId": True}}
-        )
-    youtube_api_handler = YoutubeApiHandler(args.youtube_api_key)
+            filter_params={"fields": {"channelId": True}})
+    youtube_api_handler = YoutubeApiHandler(args.youtube_api_key, args.dry_run)
     comments_detail = dict(youtube_api_handler.get_videos_comment(args.channel_id))
     if args.save:
         CommentsUnlabelData().save(TRAIN_DIR, comments_detail)
