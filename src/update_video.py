@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import logging
 import argparse
 from os import path
