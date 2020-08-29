@@ -50,8 +50,6 @@ def main():
                 try:
                     videos.push(detail)
                     logger.info("push data: {}".format(detail))
-                except HTTPError as e:
-                    logger.error('http error at pushing: {}, error meesage:{}'.format(detail, e))
                 except Exception as e:
                     logger.error('error at pushing: {}, error message: {}'.format(detail, e))
             else:
