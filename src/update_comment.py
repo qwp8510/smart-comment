@@ -5,11 +5,10 @@ import pandas as pd
 import json
 from time import gmtime, strftime
 from os import path
-from itertools import chain
 from eyescomment.config import Config
 from eyescomment.youtube import YoutubeVideo, YoutubeChannel
 from eyescomment.youtube_api import YoutubeApi
-from eyescomment.md import Mongodb
+from eyescomment.message_helper import MessageHelper
 
 
 logger = logging.getLogger(__name__)
@@ -21,12 +20,6 @@ FEATURES_LABEL = 'feature.json'
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cluster', default='raw-comment-chinese',
-                        help='Mongodb cluster')
-    parser.add_argument('--db', default='comment-chinese',
-                        help='Mongodb database')
-    parser.add_argument('--collection', default=None,
-                        help='Mongodb collection')
     parser.add_argument('--video-id', default=None,
                         help='youtube video unique id')
     parser.add_argument('--channel-id', nargs='+', default=None,
@@ -109,10 +102,18 @@ def gen_file_path(file_dir):
 
 
 class YoutubeApiHandler(YoutubeApi):
-    def __init__(self, key, patch_update_times):
-        self.key = key
-        self.patch_update_times = patch_update_times
+    def __init__(self, key, dry_run):
+        self._dry_run = dry_run
+        self._message_helper = MessageHelper()
         super().__init__(apiKey=key)
+
+    def publish(self, channel_id, comments):
+        # 50 comments message size are too large, so split to 1 per publish
+        for v_id, v_comments in comments.items():
+            for idx in range(len(v_comments)):
+                message = json.dumps(
+                    {channel_id: {v_id: v_comments[idx]}})
+                self._message_helper.publish(message)
 
     def get_comment_detail(self, channel_id):
         video_detail = YoutubeVideo(
@@ -120,62 +121,25 @@ class YoutubeApiHandler(YoutubeApi):
             cache_path=Config.instance().get('CACHE_DIR'),
             filter_params={"where": {"channelId": channel_id, "updateTimes": 0}})
         for video in video_detail:
-            if video['updateTimes'] == 0:
+            if video['updateTimes'] <= 0:
                 video_id = video['videoId']
                 logger.info('getting video id: {} comment'.format(video_id))
-                if not self.patch_update_times:
+                if not self._dry_run:
                     new_video_update_times = video['updateTimes'] + 1
                     video_detail.patch(
                         id=video['id'], json_data={'updateTimes': new_video_update_times})
-                yield video_id, self.gen_comment(video_id, 50)
+                    comments = self.gen_comment(video_id, 50)
+                    self.publish(channel_id, comments)
+                    yield comments
 
     def get_videos_comment(self, channels_id):
         for channel_id in channels_id:
             if isinstance(channel_id, dict):
                 channel_id = channel_id['channelId']
             logger.info('processing channel id : {} videos'.format(channel_id))
-            comment_detail = dict(self.get_comment_detail(channel_id))
+            comment_detail = list(self.get_comment_detail(channel_id))
             if comment_detail:
                 yield channel_id, comment_detail
-
-
-class MdHandler(Mongodb):
-    def __init__(
-        self,
-        cluster='raw-comment-chinese',
-        db='comment-chinese',
-        collection=None
-    ):
-        self.cluster = cluster
-        self.db = db
-        self.collection = collection
-
-    def gen_collection(self, channel_id):
-        return 'comment-{}'.format(channel_id)
-
-    def push_comment_detail(self, comment_detail):
-        for video_id, video_comments_detail in comment_detail.items():
-            post_message = list(chain(*video_comments_detail.values()))
-            if post_message:
-                self.insert_many(post_message)
-                logger.info(
-                    'pushing key: {} video comment detail to mongodb: {}'.format(
-                        video_id, video_comments_detail)
-                )
-            else:
-                logger.debug(
-                    'fial pushing key:{} video comment detail to mongodb: {}'.format(
-                        video_id, video_comments_detail)
-                )
-
-    def push_collection(self, comments_detail):
-        for channel_id, channel_comments_detail in comments_detail.items():
-            if not self.collection:
-                self.collection = self.gen_collection(channel_id)
-            super().__init__(
-                cluster_name=self.cluster, db_name=self.db, collection_name=self.collection
-            )
-            self.push_comment_detail(channel_comments_detail)
 
 
 def main():
@@ -190,17 +154,10 @@ def main():
     comments_detail = dict(youtube_api_handler.get_videos_comment(args.channel_id))
     if args.save:
         CommentsUnlabelData().save(TRAIN_DIR, comments_detail)
-    if not args.dry_run:
-        MdHandler(
-            cluster=args.cluster,
-            db=args.db,
-            collection=args.collection
-        ).push_collection(comments_detail)
 
 
 if __name__ == '__main__':
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)-15s:%(levelname)s:%(name)s:%(message)s',
-    )
+        format='%(asctime)-15s:%(levelname)s:%(name)s:%(message)s')
     main()
