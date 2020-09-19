@@ -101,19 +101,41 @@ def gen_file_path(file_dir):
     return path.join(file_dir, file_name)
 
 
-class YoutubeApiHandler(YoutubeApi):
+class YoutubeCommentHandler(YoutubeApi):
     def __init__(self, key, dry_run):
         self._dry_run = dry_run
         self._message_helper = MessageHelper()
         super().__init__(apiKey=key)
 
-    def publish(self, channel_id, comments):
+    def _publish(self, channel_id, comments):
         # 50 comments message size are too large, so split to 1 per publish
         for v_id, v_comments in comments.items():
             for idx in range(len(v_comments)):
                 message = json.dumps(
                     {channel_id: {v_id: v_comments[idx]}})
                 self._message_helper.publish(message)
+
+    def _register_video_update(self, video_detail, video):
+        new_video_update_times = video['updateTimes'] + 1
+        video_detail.patch(
+            id=video['id'], json_data={'updateTimes': new_video_update_times})
+
+    def publish_gen_video_comments(self, video_id):
+        """ Publish video comments by gen Yt
+        Args:
+            video_id(str)
+
+        Returns:
+            comments(dict)
+
+        """
+        comments = self.gen_comment(video_id, 50)
+        if not len(comments):
+            return
+        channel_id = comments.get(video_id)[0].get('channelId')
+        if channel_id:
+            self._publish(channel_id, comments)
+        return comments
 
     def get_comment_detail(self, channel_id):
         video_detail = YoutubeVideo(
@@ -125,12 +147,8 @@ class YoutubeApiHandler(YoutubeApi):
                 video_id = video['videoId']
                 logger.info('getting video id: {} comment'.format(video_id))
                 if not self._dry_run:
-                    new_video_update_times = video['updateTimes'] + 1
-                    video_detail.patch(
-                        id=video['id'], json_data={'updateTimes': new_video_update_times})
-                    comments = self.gen_comment(video_id, 50)
-                    self.publish(channel_id, comments)
-                    yield comments
+                    # self._register_video_update(video_detail, video)
+                    yield self.publish_gen_video_comments(video_id)
 
     def get_videos_comment(self, channels_id):
         for channel_id in channels_id:
@@ -150,8 +168,8 @@ def main():
             host=Config.instance().get('PORTAL_SERVER'),
             cache_path=Config.instance().get('CACHE_DIR'),
             filter_params={"fields": {"channelId": True}})
-    youtube_api_handler = YoutubeApiHandler(args.youtube_api_key, args.dry_run)
-    comments_detail = dict(youtube_api_handler.get_videos_comment(args.channel_id))
+    yt_comment_handler = YoutubeCommentHandler(args.youtube_api_key, args.dry_run)
+    comments_detail = dict(yt_comment_handler.get_videos_comment(args.channel_id))
     if args.save:
         CommentsUnlabelData().save(TRAIN_DIR, comments_detail)
 
