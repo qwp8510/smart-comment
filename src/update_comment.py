@@ -107,6 +107,7 @@ class YoutubeCommentHandler(YoutubeApi):
         super().__init__(apiKey=key)
 
     def _publish(self, rabbitmq, channel_id, comments):
+        print('rabbitmq:', channel_id)
         rabbitmq.publish({channel_id: comments})
 
     def _register_video_update(self, video_detail, video):
@@ -126,6 +127,8 @@ class YoutubeCommentHandler(YoutubeApi):
         try:
             rabbitmq = RabbitMqHelper('localhost', 'comment-queue')
             comments = self.gen_comment(video_id, 50)
+            if isinstance(channel_id, list):
+                channel_id = channel_id[0]
             self._publish(rabbitmq, channel_id, comments)
             return comments
         except Exception as e:
@@ -160,12 +163,14 @@ class YoutubeCommentHandler(YoutubeApi):
 def main():
     args = _parse_args()
     Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
-    if not args.channel_id:
+    yt_comment_handler = YoutubeCommentHandler(args.youtube_api_key, args.dry_run)
+    if args.video_id and args.channel_id:
+        return yt_comment_handler.publish_gen_video_comments(args.channel_id, args.video_id)
+    elif not args.channel_id:
         args.channel_id = YoutubeChannel(
             host=Config.instance().get('PORTAL_SERVER'),
             cache_path=Config.instance().get('CACHE_DIR'),
             filter_params={"fields": {"channelId": True}})
-    yt_comment_handler = YoutubeCommentHandler(args.youtube_api_key, args.dry_run)
     comments_detail = dict(yt_comment_handler.get_videos_comment(args.channel_id))
     if args.save:
         CommentsUnlabelData().save(TRAIN_DIR, comments_detail)
