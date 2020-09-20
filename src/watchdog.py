@@ -18,8 +18,6 @@ def monitor_process_exist():
 
 
 def main():
-    start = time.time()
-    end = start + 10
     while True:
         try:
             monitor_process_exist()
