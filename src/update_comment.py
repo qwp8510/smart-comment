@@ -8,7 +8,7 @@ from os import path
 from eyescomment.config import Config
 from eyescomment.youtube import YoutubeVideo, YoutubeChannel
 from eyescomment.youtube_api import YoutubeApi
-from eyescomment.message_helper import MessageHelper
+from eyescomment.rabbitmq_helper import RabbitMqHelper
 
 
 logger = logging.getLogger(__name__)
@@ -104,23 +104,17 @@ def gen_file_path(file_dir):
 class YoutubeCommentHandler(YoutubeApi):
     def __init__(self, key, dry_run):
         self._dry_run = dry_run
-        self._message_helper = MessageHelper()
         super().__init__(apiKey=key)
 
-    def _publish(self, channel_id, comments):
-        # 50 comments message size are too large, so split to 1 per publish
-        for v_id, v_comments in comments.items():
-            for idx in range(len(v_comments)):
-                message = json.dumps(
-                    {channel_id: {v_id: v_comments[idx]}})
-                self._message_helper.publish(message)
+    def _publish(self, rabbitmq, channel_id, comments):
+        rabbitmq.publish({channel_id: comments})
 
     def _register_video_update(self, video_detail, video):
         new_video_update_times = video['updateTimes'] + 1
         video_detail.patch(
             id=video['id'], json_data={'updateTimes': new_video_update_times})
 
-    def publish_gen_video_comments(self, video_id):
+    def publish_gen_video_comments(self, channel_id, video_id):
         """ Publish video comments by gen Yt
         Args:
             video_id(str)
@@ -129,13 +123,16 @@ class YoutubeCommentHandler(YoutubeApi):
             comments(dict)
 
         """
-        comments = self.gen_comment(video_id, 50)
-        if not len(comments):
-            return
-        channel_id = comments.get(video_id)[0].get('channelId')
-        if channel_id:
-            self._publish(channel_id, comments)
-        return comments
+        try:
+            rabbitmq = RabbitMqHelper('localhost', 'comment-queue')
+            comments = self.gen_comment(video_id, 50)
+            self._publish(rabbitmq, channel_id, comments)
+            return comments
+        except Exception as e:
+            logger.error('publish_gen_video_comments fail: {}'.format(e))
+            return {}
+        finally:
+            rabbitmq.close()
 
     def get_comment_detail(self, channel_id):
         video_detail = YoutubeVideo(
@@ -147,8 +144,8 @@ class YoutubeCommentHandler(YoutubeApi):
                 video_id = video['videoId']
                 logger.info('getting video id: {} comment'.format(video_id))
                 if not self._dry_run:
-                    # self._register_video_update(video_detail, video)
-                    yield self.publish_gen_video_comments(video_id)
+                    self._register_video_update(video_detail, video)
+                    yield self.publish_gen_video_comments(channel_id, video_id)
 
     def get_videos_comment(self, channels_id):
         for channel_id in channels_id:
