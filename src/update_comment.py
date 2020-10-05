@@ -8,7 +8,8 @@ from os import path
 from eyescomment.config import Config
 from eyescomment.youtube import YoutubeVideo, YoutubeChannel
 from eyescomment.youtube_api import YoutubeApi
-from eyescomment.rabbitmq_helper import RabbitMqHelper
+from eyescomment.rabbitmq_helper import RabbitMqFanout
+from eyescomment.md import Mongodb
 
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,15 @@ class YoutubeCommentHandler(YoutubeApi):
         video_detail.patch(
             id=video['id'], json_data={'updateTimes': new_video_update_times})
 
+    def _filter_exist_comment_id(self, comments, exist_comments_id):
+        for key, comments_detail in comments.items():
+            new_comments_detail = []
+            for comment_detail in comments_detail:
+                comment_id = comment_detail.get('commentId')
+                if comment_id and comment_id not in exist_comments_id:
+                    new_comments_detail.append(comment_detail)
+            yield key, new_comments_detail
+
     def publish_gen_video_comments(self, channel_id, video_id):
         """ Publish video comments by gen Yt
         Args:
@@ -124,12 +134,18 @@ class YoutubeCommentHandler(YoutubeApi):
 
         """
         try:
-            rabbitmq = RabbitMqHelper('localhost', 'comment-queue')
+            rabbitmq = RabbitMqFanout('localhost', 'comment-queue')
             comments = self.gen_comment(video_id, 50)
             if isinstance(channel_id, list):
                 channel_id = channel_id[0]
-            self._publish(rabbitmq, channel_id, comments)
-            return comments
+            comments_detail = list(Mongodb(
+                cluster_name='raw-comment-chinese',
+                db_name='comment-chinese',
+                collection_name='comment-{}'.format(channel_id)).get({'videoId': video_id}))
+            comments_id = [comment.get('commentId') for comment in comments_detail]
+            new_comments_detail = dict(self._filter_exist_comment_id(comments, comments_id))
+            self._publish(rabbitmq, channel_id, new_comments_detail)
+            return new_comments_detail
         except Exception as e:
             logger.error('publish_gen_video_comments fail: {}'.format(e))
             return {}
