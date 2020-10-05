@@ -21,4 +21,5 @@ tensorflow==2.1.0
 tensorflow-estimator==2.1.0
 jieba==0.42.1
 pika==1.1.0
+redis==3.5.3
 sysv-ipc==1.0.1
