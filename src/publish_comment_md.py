@@ -4,7 +4,7 @@ import argparse
 from os import path
 from eyescomment.md import Mongodb
 from eyescomment.config import Config
-from eyescomment.rabbitmq_helper import RabbitMqHelper
+from eyescomment.rabbitmq_helper import RabbitMqFanout
 
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ class MdHandler(Mongodb):
 def main():
     args = _parse_args()
     Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
-    rabbitmq = RabbitMqHelper('localhost', exchange='comment-queue')
+    rabbitmq = RabbitMqFanout('localhost', exchange='comment-queue')
     md_handler = MdHandler(
         cluster=args.cluster,
         database=args.db,
@@ -74,9 +74,11 @@ def main():
         try:
             rabbitmq.consume(md_handler.callback)
         except KeyboardInterrupt:
+            rabbitmq.close()
             logger.warning('keyboard interrupt\n')
             break
         except Exception as e:
+            rabbitmq.close()
             logger.error('main exception: {}'.format(e))
             break
 
