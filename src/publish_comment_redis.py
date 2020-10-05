@@ -4,7 +4,7 @@ import argparse
 from os import path
 from eyescomment.redis_helper import RedisHelper
 from eyescomment.config import Config
-from eyescomment.rabbitmq_helper import RabbitMqHelper
+from eyescomment.rabbitmq_helper import RabbitMqFanout
 
 
 logger = logging.getLogger(__name__)
@@ -34,10 +34,10 @@ class RedisHandler(RedisHelper):
                 try:
                     self.update_list(video_id, comment)
                     logger.info(
-                        'pushing key: {} video comment detail to mongodb: {}'.format(
+                        'pushing key: {} video comment detail to redis: {}'.format(
                             video_id, comment))
                 except Exception as e:
-                    logger.error('Fail push_comment_detail: {}'.format(e))
+                    logger.error('Fail push_comment_detail to redis: {}'.format(e))
 
     def push(self, comments_detail):
         for channel_id, channel_comments_detail in comments_detail.items():
@@ -52,16 +52,18 @@ class RedisHandler(RedisHelper):
 def main():
     args = _parse_args()
     Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
-    rabbitmq = RabbitMqHelper('localhost', exchange='comment-queue', exchange_type='fanout')
+    rabbitmq = RabbitMqFanout('localhost', exchange='comment-queue', exchange_type='fanout')
     redis_handler = RedisHandler(host=args.host, port=args.port, db=args.db)
     while True:
         try:
             rabbitmq.consume(redis_handler.callback)
         except KeyboardInterrupt:
-            logger.warning('keyboard interrupt\n')
+            rabbitmq.close()
+            logger.warning('publish_comment_redis keyboard interrupt\n')
             break
         except Exception as e:
-            logger.error('main exception: {}'.format(e))
+            rabbitmq.close()
+            logger.error('publish_comment_redis main exception: {}'.format(e))
             break
 
 
