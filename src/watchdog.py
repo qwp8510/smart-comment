@@ -23,10 +23,11 @@ def main():
             monitor_process_exist()
             sleep(10)
         except KeyboardInterrupt:
-            os.system('pkill -15 python ./publish_comment.py')
-            logger.warning('keyboard interrupt, then kill publish_comment.py')
+            os.system('pkill -15 python ./publish_comment_md.py')
+            logger.warning('keyboard interrupt, then kill publish_comment_md.py')
             break
         except Exception as e:
+            os.system('pkill -15 python ./publish_comment_md.py')
             logger.error('main exception: {}'.format(e))
             break
 
