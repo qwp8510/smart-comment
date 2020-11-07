@@ -26,7 +26,7 @@ def _parse_args():
     parser.add_argument('--channel-id', nargs='+', default=None,
                         help='youtube channel')
     parser.add_argument('--youtube-api-key',
-                        default='AIzaSyBKWCDhu4PumaIgwie_hHw602uOHFWgR1o',
+                        default='AIzaSyBhsPvi6a5lb7rFsnkqz93v5h65AIn7Nw4',
                         help='youtube api key')
     parser.add_argument('--dry-run', action='store_true',
                         help='Show results only, do not plubic')
@@ -110,7 +110,7 @@ class YoutubeCommentHandler(YoutubeApi):
     def _publish(self, rabbitmq, channel_id, comments):
         rabbitmq.publish({channel_id: comments})
 
-    def _register_video_update(self, video_detail, video):
+    def _update_register_video_times(self, video_detail, video):
         new_video_update_times = video['updateTimes'] + 1
         video_detail.patch(
             id=video['id'], json_data={'updateTimes': new_video_update_times})
@@ -127,6 +127,7 @@ class YoutubeCommentHandler(YoutubeApi):
     def publish_gen_video_comments(self, channel_id, video_id):
         """ Publish video comments by gen Yt
         Args:
+            channel_id(str)
             video_id(str)
 
         Returns:
@@ -134,17 +135,19 @@ class YoutubeCommentHandler(YoutubeApi):
 
         """
         try:
-            rabbitmq = RabbitMqFanout('localhost', 'comment-queue')
             comments = self.gen_comment(video_id, 50)
-            if isinstance(channel_id, list):
-                channel_id = channel_id[0]
-            comments_detail = list(Mongodb(
+            if not isinstance(channel_id, list) or not len(channel_id) > 0:
+                return {}
+            channel_id = channel_id[0]
+            comments_doc = list(Mongodb(
                 cluster_name='raw-comment-chinese',
                 db_name='comment-chinese',
                 collection_name='comment-{}'.format(channel_id)).get({'videoId': video_id}))
-            comments_id = [comment.get('commentId') for comment in comments_detail]
+            comments_id = [comment_doc.get('commentId') for comment_doc in comments_doc]
             new_comments_detail = dict(self._filter_exist_comment_id(comments, comments_id))
-            self._publish(rabbitmq, channel_id, new_comments_detail)
+            rabbitmq = RabbitMqFanout('localhost', 'comment-queue')
+            if not self._dry_run:
+                self._publish(rabbitmq, channel_id, new_comments_detail)
             return new_comments_detail
         except Exception as e:
             logger.error('publish_gen_video_comments fail: {}'.format(e))
@@ -158,12 +161,13 @@ class YoutubeCommentHandler(YoutubeApi):
             cache_path=Config.instance().get('CACHE_DIR'),
             filter_params={"where": {"channelId": channel_id, "updateTimes": 0}})
         for video in video_detail:
-            if video['updateTimes'] <= 0:
-                video_id = video['videoId']
-                logger.info('getting video id: {} comment'.format(video_id))
-                if not self._dry_run:
-                    self._register_video_update(video_detail, video)
-                    yield self.publish_gen_video_comments(channel_id, video_id)
+            if video['updateTimes'] > 0:
+                continue
+            video_id = video['videoId']
+            if not self._dry_run:
+                self._update_register_video_times(video_detail, video)
+            logger.info('getting video id: {} comment'.format(video_id))
+            yield self.publish_gen_video_comments(channel_id, video_id)
 
     def get_videos_comment(self, channels_id):
         for channel_id in channels_id:
