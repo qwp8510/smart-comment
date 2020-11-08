@@ -105,7 +105,7 @@ def gen_file_path(file_dir):
 class YoutubeCommentHandler(YoutubeApi):
     def __init__(self, key, dry_run):
         self._dry_run = dry_run
-        super().__init__(apiKey=key)
+        super().__init__(api_key=key)
 
     def _publish(self, rabbitmq, channel_id, comments):
         rabbitmq.publish({channel_id: comments})
