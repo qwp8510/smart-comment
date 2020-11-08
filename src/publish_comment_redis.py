@@ -52,7 +52,7 @@ class RedisHandler(RedisHelper):
 def main():
     args = _parse_args()
     Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
-    rabbitmq = RabbitMqFanout('localhost', exchange='comment-queue', exchange_type='fanout')
+    rabbitmq = RabbitMqFanout('localhost', exchange='comment-queue')
     redis_handler = RedisHandler(host=args.host, port=args.port, db=args.db)
     while True:
         try:
