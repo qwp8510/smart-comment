@@ -124,6 +124,15 @@ class YoutubeCommentHandler(YoutubeApi):
                     new_comments_detail.append(comment_detail)
             yield key, new_comments_detail
 
+    def _get_str_type_channel_id(self, channel_id):
+        if isinstance(channel_id, list) and len(channel_id) == 0:
+            return channel_id[0]
+        elif isinstance(channel_id, str):
+            return channel_id
+        else:
+            raise('_get_str_type_channel_id got channel id unexpected type')
+            exit()
+
     def publish_gen_video_comments(self, channel_id, video_id):
         """ Publish video comments by gen Yt
         Args:
@@ -134,18 +143,16 @@ class YoutubeCommentHandler(YoutubeApi):
             comments(dict)
 
         """
+        comments = self.gen_comment(video_id, 50)
+        channel_id = self._get_str_type_channel_id(channel_id)
+        comments_doc = list(Mongodb(
+            cluster_name='raw-comment-chinese',
+            db_name='comment-chinese',
+            collection_name='comment-{}'.format(channel_id)).get({'videoId': video_id}))
+        comments_id = [comment_doc.get('commentId') for comment_doc in comments_doc]
+        new_comments_detail = dict(self._filter_exist_comment_id(comments, comments_id))
+        rabbitmq = RabbitMqFanout('localhost', 'comment-queue')
         try:
-            comments = self.gen_comment(video_id, 50)
-            if not isinstance(channel_id, list) or not len(channel_id) > 0:
-                return {}
-            channel_id = channel_id[0]
-            comments_doc = list(Mongodb(
-                cluster_name='raw-comment-chinese',
-                db_name='comment-chinese',
-                collection_name='comment-{}'.format(channel_id)).get({'videoId': video_id}))
-            comments_id = [comment_doc.get('commentId') for comment_doc in comments_doc]
-            new_comments_detail = dict(self._filter_exist_comment_id(comments, comments_id))
-            rabbitmq = RabbitMqFanout('localhost', 'comment-queue')
             if not self._dry_run:
                 self._publish(rabbitmq, channel_id, new_comments_detail)
             return new_comments_detail
