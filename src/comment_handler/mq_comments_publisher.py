@@ -43,8 +43,8 @@ class MqPublisher():
     def _publish(self, comments_detail_list):
         for idx in range(0, len(comments_detail_list), self.PUBLISH_SLICE):
             self._mq_model.publish({
-                self._channel_id: list(
-                    self._filter_exist_comment(comments_detail_list[idx : idx + self.PUBLISH_SLICE]))})
+                self._channel_id: list(self._filter_exist_comment(
+                    comments_detail_list[idx: idx + self.PUBLISH_SLICE]))})
 
     def publish_video_comment(self, video_comments_detail):
         for video_id, comments_detail in video_comments_detail.items():
