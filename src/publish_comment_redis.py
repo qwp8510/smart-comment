@@ -19,6 +19,12 @@ def _parse_args():
                         help='Mongodb collection')
     parser.add_argument('--db', default=0,
                         help='Mongodb database')
+    parser.add_argument('--rabbitmq-host',
+                        default='localhost',
+                        help='rabbitmq host default: localhost')
+    parser.add_argument('--rabbitmq-queue',
+                        default='comment-queue',
+                        help='default: online-comment-queue')
     return parser.parse_args()
 
 
@@ -26,18 +32,18 @@ class RedisHandler(RedisHelper):
     def __init__(self, host='localhost', port=6379, db=0):
         super().__init__(host=host, port=port, db=db)
 
-    def push_comment_detail(self, comment_detail):
-        for video_id, video_comment_detail in comment_detail.items():
-            if not video_comment_detail:
+    def push_comment_detail(self, comments_detail):
+        for comment_detail in comments_detail:
+            if not comment_detail:
                 continue
-            for comment in video_comment_detail:
-                try:
-                    self.update_list(video_id, comment)
-                    logger.info(
-                        'pushing key: {} video comment detail to redis: {}'.format(
-                            video_id, comment))
-                except Exception as e:
-                    logger.error('Fail push_comment_detail to redis: {}'.format(e))
+            try:
+                self.update_list(comment_detail.get('videoId', 'Miss_videoId'), comment_detail)
+                logger.info(
+                    'pushing key: {} video comment detail to redis: {}'.format(
+                        comment_detail.get('videoId', 'Miss_videoId'), comment_detail))
+            except Exception as e:
+                logger.error('push_comment_detail fail with: {} to redis: {}'.format(
+                    comment_detail.get('videoId', 'Miss_videoId'), e))
 
     def push(self, comments_detail):
         for channel_id, channel_comments_detail in comments_detail.items():
@@ -52,19 +58,19 @@ class RedisHandler(RedisHelper):
 def main():
     args = _parse_args()
     Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
-    rabbitmq = RabbitMqFanout('localhost', exchange='comment-queue')
+    mq_fanout = RabbitMqFanout(args.rabbitmq_host, args.rabbitmq_queue)
     redis_handler = RedisHandler(host=args.host, port=args.port, db=args.db)
     while True:
         try:
-            rabbitmq.consume(redis_handler.callback)
+            mq_fanout.consume(redis_handler.callback)
         except KeyboardInterrupt:
-            rabbitmq.close()
             logger.warning('publish_comment_redis keyboard interrupt\n')
             break
         except Exception as e:
-            rabbitmq.close()
             logger.error('publish_comment_redis main exception: {}'.format(e))
             break
+        finally:
+            mq_fanout.close()
 
 
 if __name__ == '__main__':
