@@ -19,6 +19,12 @@ def _parse_args():
                         help='Mongodb database')
     parser.add_argument('--collection', default=None,
                         help='Mongodb collection')
+    parser.add_argument('--rabbitmq-host',
+                        default='localhost',
+                        help='rabbitmq host default: localhost')
+    parser.add_argument('--rabbitmq-queue',
+                        default='comment-queue',
+                        help='default: comment-queue')
     return parser.parse_args()
 
 
@@ -64,22 +70,22 @@ class MdHandler(Mongodb):
 def main():
     args = _parse_args()
     Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
-    rabbitmq = RabbitMqFanout('localhost', exchange='comment-queue')
+    mq_fanout = RabbitMqFanout(args.rabbitmq_host, args.rabbitmq_queue)
     md_handler = MdHandler(
         cluster=args.cluster,
         database=args.db,
         collection=args.collection)
     while True:
         try:
-            rabbitmq.consume(md_handler.callback)
+            mq_fanout.consume(md_handler.callback)
         except KeyboardInterrupt:
-            rabbitmq.close()
             logger.warning('keyboard interrupt\n')
             break
         except Exception as e:
-            rabbitmq.close()
             logger.error('main exception: {}'.format(e))
             break
+        finally:
+            mq_fanout.close()
 
 
 if __name__ == '__main__':
