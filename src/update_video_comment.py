@@ -24,8 +24,8 @@ def _parse_args():
                         default='localhost',
                         help='rabbitmq host default: localhost')
     parser.add_argument('--rabbitmq-queue',
-                        default='online-comment-queue',
-                        help='default: online-comment-queue')
+                        default='comment-queue',
+                        help='default: comment-queue')
     parser.add_argument('--dry-run', action='store_true',
                         help='Show results only, do not plubish')
     return parser.parse_args()
