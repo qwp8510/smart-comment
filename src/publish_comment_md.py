@@ -36,15 +36,14 @@ class MdHandler(Mongodb):
     def gen_collection(self, channel_id):
         return 'comment-{}'.format(channel_id)
 
-    def push_comment_detail(self, comment_detail):
-        for video_id, video_comment_detail in comment_detail.items():
-            if not video_comment_detail:
+    def push_comments_detail(self, comments_detail):
+        for comment_detail in comments_detail:
+            if not comment_detail:
                 continue
-            for comment in video_comment_detail:
-                self.insert_one(comment)
-                logger.info(
-                    'pushing key: {} video comment detail to mongodb: {}'.format(
-                        video_id, comment))
+            self.insert_one(comment_detail)
+            logger.info(
+                'pushing key: {} video comment detail to mongodb: {}'.format(
+                    comment_detail.get('videoId', 'Miss_videoId'), comment_detail))
 
     def push_collection(self, comments_detail):
         for channel_id, channel_comments_detail in comments_detail.items():
@@ -54,7 +53,7 @@ class MdHandler(Mongodb):
                 self.collection = self.gen_collection(channel_id)
             super().__init__(
                 cluster_name=self.cluster, db_name=self.database, collection_name=self.collection)
-            self.push_comment_detail(channel_comments_detail)
+            self.push_comments_detail(channel_comments_detail)
 
     def callback(self, ch, method, properties, body):
         message = eval(body.decode())
