@@ -11,7 +11,7 @@ CURRENT_PATH = path.dirname(path.abspath(__file__))
 
 
 def run_publish_comment_md():
-    cmd = 'python publish_comment_md.py'
+    cmd = 'python {}/publish_comment_md.py'.format(CURRENT_PATH)
     running_prc = os.popen('ps aux | grep "[p]ublish_comment_md.py"').read()
     if not running_prc:
         logger.info('publish_online_broker run : {}'.format(cmd))
@@ -19,7 +19,7 @@ def run_publish_comment_md():
 
 
 def run_publish_comment_redis():
-    cmd = 'python publish_comment_redis.py'
+    cmd = 'python {}/publish_comment_redis.py'.format(CURRENT_PATH)
     running_prc = os.popen('ps aux | grep "[p]ublish_comment_redis.py"').read()
     if not running_prc:
         logger.info('publish_online_broker run : {}'.format(cmd))
@@ -27,7 +27,8 @@ def run_publish_comment_redis():
 
 
 def run_update_comment(channel_id, video_id):
-    cmd = 'python update_comment.py --channel-id {} --video-id {}'.format(channel_id, video_id)
+    cmd = 'python {}/update_video_comment.py --channel-id {} --video-id {}'.format(
+        CURRENT_PATH, channel_id, video_id)
     logger.info('publish_online_broker run : {}'.format(cmd))
     subprocess.Popen(cmd, shell=True)
 
@@ -62,6 +63,7 @@ def main():
                 'keyboard interrupt, then kill publish_comment_md.py & publish_comment_redis.py')
             logger.error('main exception: {}'.format(e))
             break
+    rabbitmq.close()
 
 
 if __name__ == '__main__':
