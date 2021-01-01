@@ -26,9 +26,8 @@ class Predictor():
 
 
 class SentimentDetector():
-    URL = 'https://www.wisers.ai/?api=ailab-demo-apilb.wisers.com:8000/senti/api/processtext'
-
     def __init__(self):
+        self.URL = Config.instance().get('SENTIMENT_API_URL')
         self._sess = None
 
     @property
