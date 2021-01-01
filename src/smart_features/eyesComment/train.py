@@ -4,8 +4,8 @@ import logging
 import os
 from os import path
 from datetime import datetime
-from model import Model
-from eyescomment.config import Config
+from .model import Model
+from eyescomment import get_json_content
 
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
@@ -67,7 +67,7 @@ def train(*args):
         np.array(input_ids), np.array(input_segments), np.array(input_masks), np.array(y_train)
     logger.info('training data shape ids:{}, segments:{}, masks:{}, y_train:{}'.format(
         input_ids.shape, input_segments.shape, input_masks.shape, y_train.shape))
-    BertModel = Model(Config(path.join(CURRENT_DIR, 'bert_tensorflow/bert_config.json')).read())
+    BertModel = Model(get_json_content(path.join(CURRENT_DIR, 'bert_tensorflow/bert_config.json')))
     x_train = [input_ids, input_masks, input_segments]
     batch_size = 32
     epoch = 1
