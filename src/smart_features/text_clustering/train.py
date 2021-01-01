@@ -4,7 +4,7 @@ import logging
 from os import path
 from sklearn.model_selection import train_test_split
 
-from model import Encoder, Decoder, Seq2Seq
+from .model import Encoder, Decoder, Seq2Seq
 
 
 logger = logging.getLogger(__name__)
