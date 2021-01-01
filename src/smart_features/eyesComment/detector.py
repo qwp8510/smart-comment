@@ -3,6 +3,7 @@ import requests
 
 from .model import Model
 from eyescomment.config import Config
+from eyescomment import get_json_content
 
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
@@ -14,7 +15,7 @@ class Predictor():
     WEIGHTS_PATH = path.join(CURRENT_DIR, 'models', '2020-06-26T16-17-42', 'weights.ckpt')
 
     def __init__(self):
-        config = Config(path.join(CURRENT_DIR, 'bert_tensorflow/bert_config.json')).read()
+        config = get_json_content(path.join(CURRENT_DIR, 'bert_tensorflow/bert_config.json'))
         self.model = Model(config)
         self.model.load_weights(self.WEIGHTS_PATH)
         self.models = self.model
