@@ -5,6 +5,7 @@ from smart_features.models import SmartFeatures
 
 
 logger = logging.getLogger(__name__)
+DATA = {'eyesComment': load_train_data, 'text_clustering': load_comments}
 
 
 def _parse_args():
@@ -19,7 +20,7 @@ def _parse_args():
 def main():
     args = _parse_args()
     model = SmartFeatures.model(args.model, args.model_behavior)
-    model.train(load_train_data())
+    model.train(DATA.get(args.model)())
 
 
 if __name__ == '__main__':
