@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.utils import shuffle
 import jieba.posseg as pseg
 from tensorflow import keras
-from tokenization import FullTokenizer
+from .tokenization import FullTokenizer
 from eyescomment.config import Config
 from eyescomment.md import Mongodb
 from eyescomment.youtube import YoutubeChannel
