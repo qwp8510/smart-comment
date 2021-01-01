@@ -43,16 +43,17 @@ class MdCommentSentimentUpdater(Mongodb):
         return 'comment-{}'.format(channel_id)
 
     def predict_sentiment_score(self, text):
-        try:
-            return self.model.predict(text)
-        except Exception as err:
-            logger.error('predict_sentiment_score fail with {}'.format(err))
+        return self.model.predict(text)
 
     def _enrich_sentiment_data(self, text):
         return {'sentimentScore': self.predict_sentiment_score(text)}
 
     def update(self, filter_obj, text):
-        self.update_one(filter_obj, self._enrich_sentiment_data(text))
+        try:
+            self.update_one({'_id': filter_obj}, self._enrich_sentiment_data(text))
+            logger.info('updating id:{} text: {}'.format(filter_obj, text))
+        except Exception as err:
+            logger.error('predict_sentiment_score fail with {}'.format(err))
 
     def update_video(self, video_id):
         for data in self.get({'sentimentScore': {'$exists': True}, 'videoId': video_id}):
