@@ -1,7 +1,8 @@
 import numpy as np
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow import keras
 import logging
-import os
 from os import path
 from datetime import datetime
 from .model import Model
@@ -11,7 +12,6 @@ from eyescomment import get_json_content
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 logger = logging.getLogger(__name__)
 MODEL_DIR = path.join(CURRENT_DIR, 'models')
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 class Trainer():
