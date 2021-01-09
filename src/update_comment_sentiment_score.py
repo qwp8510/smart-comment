@@ -48,10 +48,19 @@ class MdCommentSentimentUpdater(Mongodb):
     def _enrich_sentiment_data(self, text):
         return {'sentimentScore': self.predict_sentiment_score(text)}
 
+    def _valid_message(self, msg):
+        return msg.get('sentimentScore', 'field not exist') is not None
+
     def update(self, filter_obj, text):
         try:
-            self.update_one({'_id': filter_obj}, self._enrich_sentiment_data(text))
-            logger.info('updating id:{} text: {}'.format(filter_obj, text))
+            msg = self._enrich_sentiment_data(text)
+            if self._valid_message(msg):
+                self.update_one({'_id': filter_obj}, msg)
+                logger.info('updating id:{} text: {}, score: {}'.format(
+                    filter_obj, text, msg.get('sentimentScore')))
+            else:
+                logger.warning('id {}, text {} got invalid message {}'.format(
+                    filter_obj, text, msg))
         except Exception as err:
             logger.error('predict_sentiment_score fail with {}'.format(err))
 
