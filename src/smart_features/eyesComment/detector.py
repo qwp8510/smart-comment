@@ -1,5 +1,8 @@
 from os import path
 import requests
+import logging
+from nltk.sentiment import SentimentIntensityAnalyzer
+from translate import Translator
 
 from .model import Model
 from eyescomment.config import Config
@@ -8,6 +11,7 @@ from eyescomment import get_json_content
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 VOCAB_DIR = path.join(CURRENT_DIR, 'bert_tensorflow/assets/vocab.txt')
+logger = logging.getLogger(__name__)
 
 
 class Predictor():
@@ -48,3 +52,20 @@ class SentimentDetector():
         response = self.sess.post(self.URL, json=self._enrich_data(text))
         if response.status_code == 200:
             return (response.json().get('overall_res', {})).get('sentiment_score')
+
+
+class NltkSentimentDetector():
+    def __init__(self):
+        self.sia = SentimentIntensityAnalyzer()
+        self.translator = Translator(from_lang="chinese", to_lang="english")
+
+    def predict(self, text):
+        try:
+            en_text = self.translator.translate(text)
+            if en_text:
+                score = self.sia.polarity_scores(en_text)
+                return score.get('compound')
+            else:
+                return None
+        except Exception as err:
+            logger.error('GoogleSentimentDetector fail with {}'.format(err))
