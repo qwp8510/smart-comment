@@ -3,6 +3,7 @@ import requests
 import logging
 from nltk.sentiment import SentimentIntensityAnalyzer
 from translate import Translator
+from snownlp import SnowNLP
 
 from .model import Model
 from eyescomment.config import Config
@@ -69,3 +70,8 @@ class NltkSentimentDetector():
                 return None
         except Exception as err:
             logger.error('GoogleSentimentDetector fail with {}'.format(err))
+
+
+class SnowNlpSentimentDetector():
+    def predict(self, text):
+        return SnowNLP(text).sentiments
