@@ -1,6 +1,5 @@
 import logging
 import argparse
-import time
 from os import path
 
 from smart_features.models import SmartFeatures
@@ -23,6 +22,8 @@ def _parse_args():
                         help='Mongodb collection')
     parser.add_argument('--channels-id', nargs='+', default=[],
                         help='youtube channel')
+    parser.add_argument('--update-all', action='store_true',
+                        help='update all comment sentiment score, include comment with sentiment score')
     return parser.parse_args()
 
 
@@ -74,9 +75,10 @@ class MdCommentSentimentUpdater(Mongodb):
             get_filter = {'sentimentScore': {'$exists': False}}
         for channel_id in channels_id:
             self.collection_name = self._get_mongodb_collection(channel_id)
-            for data in self.get(get_filter):
+            cursor = self.get(get_filter, True)
+            for data in cursor:
                 self.update(data.get('_id'), data.get('text'))
-                time.sleep(0.05)
+            cursor.close()
 
 
 def main():
@@ -89,7 +91,7 @@ def main():
             filter_params={"fields": {"channelId": True}})
         args.channels_id = [channel_dict.get('channelId') for channel_dict in yt_channels]
     MdCommentSentimentUpdater(
-        cluster=args.cluster, db=args.db).update_channels(args.channels_id)
+        cluster=args.cluster, db=args.db).update_channels(args.channels_id, args.update_all)
 
 
 if __name__ == '__main__':
