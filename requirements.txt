@@ -23,3 +23,6 @@ jieba==0.42.1
 pika==1.1.0
 redis==3.5.3
 sysv-ipc==1.0.1
+translate==3.5.0
+snownlp==0.12.3
+nltk==3.5
