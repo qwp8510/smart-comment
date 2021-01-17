@@ -1,5 +1,5 @@
 from .eyesComment import train as eyescomment_train
-from .eyesComment.detector import SentimentDetector as eyescomment_detector
+from .eyesComment.detector import SnowNlpSentimentDetector as eyescomment_detector
 from .text_clustering import train as text_clustering_train
 
 
