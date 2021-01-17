@@ -1,0 +1,1 @@
+echo FLUSHALL | redis-cli
