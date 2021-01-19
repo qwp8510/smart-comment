@@ -2,7 +2,7 @@ import logging
 import argparse
 from os import path
 
-from smart_features.models import SmartFeatures
+from sentiment.sentiment_score import SentimentScore
 from eyescomment.md import Mongodb
 from eyescomment.config import Config
 from eyescomment.youtube import YoutubeChannel
@@ -23,7 +23,8 @@ def _parse_args():
     parser.add_argument('--channels-id', nargs='+', default=[],
                         help='youtube channel')
     parser.add_argument('--update-all', action='store_true',
-                        help='update all comment sentiment score, include comment with sentiment score')
+                        help='update all comment sentiment score, \
+                              include comment with sentiment score')
     return parser.parse_args()
 
 
@@ -32,29 +33,17 @@ class MdCommentSentimentUpdater(Mongodb):
         super().__init__(
             cluster_name=cluster, db_name=db, collection_name=collection
         )
-        self._model = None
-
-    @property
-    def model(self):
-        if not self._model:
-            self._model = SmartFeatures.model('eyesComment', 'predict')()
-        return self._model
+        self.sentiment_score = SentimentScore()
 
     def _get_mongodb_collection(self, channel_id):
         return 'comment-{}'.format(channel_id)
-
-    def predict_sentiment_score(self, text):
-        return self.model.predict(text)
-
-    def _enrich_sentiment_data(self, text):
-        return {'sentimentScore': self.predict_sentiment_score(text)}
 
     def _valid_message(self, msg):
         return msg.get('sentimentScore', 'field not exist') is not None
 
     def update(self, filter_obj, text):
         try:
-            msg = self._enrich_sentiment_data(text)
+            msg = self.sentiment_score.get(text)
             if self._valid_message(msg):
                 self.update_one({'_id': filter_obj}, msg)
                 logger.info('updating id:{} text: {}, score: {}'.format(
