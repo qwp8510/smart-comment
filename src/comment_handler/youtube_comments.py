@@ -45,8 +45,6 @@ class YoutubeComments(YoutubeApi):
 
     def get_channels_comment(self, channels_id):
         for channel_id in channels_id:
-            if isinstance(channel_id, dict):
-                channel_id = channel_id['channelId']
             logger.info('processing channel id : {} videos'.format(channel_id))
             videos_comment_detail = list(self.get_videos_comment(channel_id))
             if videos_comment_detail:

@@ -35,10 +35,11 @@ def main():
     Config.set_dir(path.join(CURRENT_PATH, 'config.json'))
     yt_comments = YoutubeComments(args.youtube_api_key)
     if not args.channels_id:
-        args.channels_id = YoutubeChannel(
+        yt_channels = YoutubeChannel(
             host=Config.instance().get('PORTAL_SERVER'),
             cache_path=Config.instance().get('CACHE_DIR'),
             filter_params={"fields": {"channelId": True}})
+        args.channels_id = [channel_dict.get('channelId') for channel_dict in yt_channels]
     channels_comment_detail = dict(yt_comments.get_channels_comment(args.channels_id))
     if args.dry_run:
         exit()
