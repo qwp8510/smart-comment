@@ -13,8 +13,8 @@ CURRENT_PATH = path.dirname(path.abspath(__file__))
 
 def run_update_comment(channel_id, video_id):
     cmd = Config.instance().get('UPDATE_VIDEO_COMMENT_CMD') + \
-        ' --channel-id {} --video-id {}'.format(CURRENT_PATH, channel_id, video_id)
-    logger.info('publish_online_broker run : {}'.format(cmd))
+        ' --channel-id {} --video-id {}'.format(channel_id, video_id)
+    logger.info('online_updater run : {}'.format(cmd))
     subprocess.Popen(cmd, shell=True)
 
 
